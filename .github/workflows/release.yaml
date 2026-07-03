@@ -1,0 +1,92 @@
+name: Release Builds (Multi-OS)
+
+on:
+  push:
+    tags:
+      - "v*"
+
+env:
+  CARGO_TERM_COLOR: always
+  RUST_VERSION: stable
+
+jobs:
+  build-multi-os:
+    runs-on: ${{ matrix.os }}
+    strategy:
+      fail-fast: false
+      matrix:
+        os: [ubuntu-latest, macos-latest, windows-latest]
+        include:
+          - os: ubuntu-latest
+            target: x86_64-unknown-linux-musl
+            artifact-name: llm-client-linux-x86_64
+            ext: ""
+          - os: macos-latest
+            target: x86_64-apple-darwin
+            artifact-name: llm-client-macos-x86_64
+            ext: ""
+          - os: windows-latest
+            target: x86_64-pc-windows-msvc
+            artifact-name: llm-client-windows-x86_64.exe
+            ext: ".exe"
+
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Set up Rust
+        uses: dtolnay/rust-toolchain@stable
+        with:
+          toolchain: ${{ env.RUST_VERSION }}
+          targets: ${{ matrix.target }}
+
+      - name: Install musl tools (Linux only)
+        if: matrix.os == 'ubuntu-latest'
+        run: sudo apt-get update && sudo apt-get install -y musl-tools
+
+      - name: Build release binary
+        run: cargo build --release --target ${{ matrix.target }}
+
+      - name: Prepare artifact (rename to simple name)
+        shell: bash
+        run: |
+          BINARY_PATH="target/${{ matrix.target }}/release/llm-client${{ matrix.ext }}"
+          ARTIFACT_NAME="${{ matrix.artifact-name }}"
+          mv "$BINARY_PATH" "$ARTIFACT_NAME"
+          echo "✅ Created artifact: $ARTIFACT_NAME (size: $(stat -c%s "$ARTIFACT_NAME") bytes)"
+
+      - name: Upload artifact to Actions storage
+        uses: actions/upload-artifact@v4
+        with:
+          name: ${{ matrix.artifact-name }}
+          path: ${{ matrix.artifact-name }}
+          retention-days: 1
+
+  create-release:
+    needs: build-multi-os
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write
+
+    steps:
+      - name: Download all build artifacts
+        uses: actions/download-artifact@v4
+        with:
+          path: releases
+
+      - name: Verify files structure
+        run: find releases -type f
+
+      - name: Create Release and upload assets
+        uses: softprops/action-gh-release@v1
+        with:
+          name: "Release ${{ github.ref_name }}"
+          body: |
+            ## Changelog
+            
+            * No changelog.
+          files: |
+            releases/llm-client-linux-x86_64/llm-client-linux-x86_64
+            releases/llm-client-macos-x86_64/llm-client-macos-x86_64
+            releases/llm-client-windows-x86_64.exe/llm-client-windows-x86_64.exe
+          token: ${{ secrets.GITHUB_TOKEN }}
