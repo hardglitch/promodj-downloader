@@ -1,7 +1,12 @@
-use std::sync::LazyLock;
-
-pub static GENRES: LazyLock<Vec<(&str, &str)>> = LazyLock::new(|| {
-    vec![
+pub const VERSION: &str = "v1.5.7";
+pub const DB_NAME: &str = "history.db";
+pub const LOSSLESS_UNCOMPRESSED_FORMATS: [&str; 2] = [".wav", ".aiff"];
+pub const LOSSLESS_COMPRESSED_FORMATS: [&str; 1] = [".flac"];
+pub const LOSSY_FORMATS: [&str; 1] = [".mp3"];
+pub const FORMS: [&str; 3] = ["mixes", "tracks", "lives"];
+pub const LANGUAGES: [&str; 3] = ["en", "ru", "uk"];
+pub const GENRES: [(&str, &str); 257] =
+    [
         ("2 Step", "2_step"),
         ("8-bit", "8bit"),
         ("Abstract Hip-Hop", "abstract_hip-hop"),
@@ -160,7 +165,7 @@ pub static GENRES: LazyLock<Vec<(&str, &str)>> = LazyLock::new(|| {
         ("Lounge", "lounge"),
         ("Lowercase", "lowercase"),
         ("Melbourne Bounce", "melbourne_bounce"),
-        ("Melodic Techno", "melodic_trance"), // Corrected: Assuming this was a typo and should map to melodic_trance if it was intended to be a specific category, or kept as is if it was meant to be empty/a specific value. Based on the original, I'm keeping the mapping as provided, but noting the empty string.
+        ("Melodic Techno", "melodic_techno"),
         ("Melodic Trance", "melodic_trance"),
         ("Miami Bass", "miami_bass"),
         ("Microhouse", "microhouse"),
@@ -183,7 +188,7 @@ pub static GENRES: LazyLock<Vec<(&str, &str)>> = LazyLock::new(|| {
         ("Nu Jazz", "nu_jazz"),
         ("Nu metal", "nu_metal"),
         ("Old School Rap", "old_school_rap"),
-        ("Organic House", ""), // Kept as empty string as per original
+        ("Organic House", "organic_house"),
         ("Pop", "pop"),
         ("Pop Rap", "pop_rap"),
         ("Pop Rock", "pop_rock"),
@@ -217,7 +222,7 @@ pub static GENRES: LazyLock<Vec<(&str, &str)>> = LazyLock::new(|| {
         ("Scouse House", "scouse_house"),
         ("Shoegazing", "shoegazing"),
         ("Ska", "ska"),
-        ("Slap House", ""), // Kept as empty string as per original
+        ("Slap House", "slap_house"),
         ("Slow Motion House (Disco)", "slow_motion_house_disco"),
         ("Smooth Jazz", "smooth_jazz"),
         ("Soul", "soul"),
@@ -259,5 +264,4 @@ pub static GENRES: LazyLock<Vec<(&str, &str)>> = LazyLock::new(|| {
         ("Новости", "news"),
         ("Обзор", "review"),
         ("Разговорный", "talk"),
-    ]
-});
+    ];

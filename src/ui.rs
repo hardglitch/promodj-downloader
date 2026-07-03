@@ -1,19 +1,24 @@
 use eframe::{App, Frame};
 use egui::ComboBox;
-use crate::data::consts::GENRES;
+use crate::data::consts::{FORMS, GENRES};
+use crate::data::dictionary::inscriptions::{download, exit, file_history, last_days, lossless, overwrite_files, period};
+use crate::data::dictionary::Lang;
 
 #[derive(Debug)]
 pub struct MusicDownloaderApp {
-    // Input fields state
+    // Dropdowns
     genre: &'static str,
     form: &'static str,
     last: usize,
 
-    // Checkbox states
+    // Toggle values
     file_history: bool,
     overwrite_files: bool,
     period: bool,
     lossless: bool,
+
+    // Options
+    language: Lang,
 }
 impl Default for MusicDownloaderApp {
     fn default() -> Self {
@@ -25,6 +30,7 @@ impl Default for MusicDownloaderApp {
             overwrite_files: false,
             period: true,
             lossless: true,
+            language: Lang::En,
         }
     }
 }
@@ -35,23 +41,25 @@ impl App for MusicDownloaderApp {
                 ui.horizontal(|ui| {
                     ComboBox::new("genre", "")
                         .selected_text(&*self.genre)
+                        .width(200.0)
                         .show_ui(ui, |ui| {
-                            for (text, _) in &*GENRES {
-                                ui.selectable_value(&mut self.genre, *text, *text);
+                            for (text, _) in GENRES.iter() {
+                                ui.selectable_value(&mut self.genre, text, *text);
                             }
                         });
 
-                    ComboBox::new("mixes", "")
+                    ComboBox::new("form", "")
                         .selected_text(&*self.form)
                         .show_ui(ui, |ui| {
-                            ui.selectable_value(&mut self.form, "mixes", "mixes");
-                            ui.selectable_value(&mut self.form, "tracks", "tracks");
+                            for form in FORMS.iter() {
+                                ui.selectable_value(&mut self.form, form, *form);
+                            }
                         });
 
-                    ComboBox::new("last_days", "last_days")
+                    ComboBox::new("last", last_days(self.language))
                         .selected_text(self.last.to_string())
                         .show_ui(ui, |ui| {
-                            for i in 1..10 {
+                            for i in 0..=10 {
                                 ui.selectable_value(&mut self.last, i, i.to_string());
                             }
                         });
@@ -61,25 +69,25 @@ impl App for MusicDownloaderApp {
             // --- Checkbox Row ---
             ui.group(|ui| {
                 ui.horizontal(|ui| {
-                    ui.toggle_value(&mut self.file_history, "File History");
-                    ui.toggle_value(&mut self.overwrite_files, "Overwrite Files");
-                    ui.toggle_value(&mut self.period, "Period");
-                    ui.toggle_value(&mut self.lossless, "Lossless");
+                    ui.toggle_value(&mut self.file_history, file_history(self.language));
+                    ui.toggle_value(&mut self.overwrite_files, overwrite_files(self.language));
+                    ui.toggle_value(&mut self.period, period(self.language));
+                    ui.toggle_value(&mut self.lossless, lossless(self.language));
                 })
             });
 
 
             // --- Action Buttons Row ---
             ui.horizontal(|ui| {
-                // Exit Button
-                if ui.button("Exit").clicked() {
-                    println!("Exit clicked.");
+                // EXIT Button
+                if ui.button(exit(self.language)).clicked() {
+                    println!("EXIT clicked.");
                 }
 
-                // Download Button
-                if ui.button("Download").clicked() {
+                // DOWNLOAD Button
+                if ui.button(download(self.language)).clicked() {
                     // Displaying the current state to confirm logic works
-                    println!("Download initiated with settings: {:?}", self);
+                    println!("DOWNLOAD initiated with settings: {:?}", self);
                 }
             });
         });
