@@ -3,11 +3,13 @@
 mod data;
 mod logging;
 mod ui;
+mod main_helpers;
 
-use eframe::{egui::{IconData, ViewportBuilder}, NativeOptions};
-use std::io::Write;
 use crate::logging::Log;
-use crate::ui::MusicDownloaderApp;
+use crate::main_helpers::{load_embedded_icon, window_title};
+use crate::ui::MyApp;
+use eframe::{egui::ViewportBuilder, NativeOptions};
+use std::io::Write;
 
 fn main() {
     Log::init("log.log", 10 * 1024 * 1024 * 1024);
@@ -30,17 +32,9 @@ fn main() {
 
     if let Err(e) =
         eframe::run_native(
-            "PromoDJ Music Downloader",
+            window_title().as_str(),
             options,
-            Box::new(|_cc| Ok(Box::<MusicDownloaderApp>::default())),
+            Box::new(|ctx| Ok(Box::new(MyApp::new(ctx)))),
         )
     { log!("{e}"); }
-}
-
-fn load_embedded_icon(bytes: &[u8]) -> Result<IconData, image::ImageError> {
-    let image = image::load_from_memory(bytes)?.into_rgba8();
-    let (width, height) = image.dimensions();
-    let rgba = image.into_raw();
-    let icon_data = IconData { rgba, width, height };
-    Ok(icon_data)
 }

@@ -1,15 +1,18 @@
-use eframe::{App, Frame};
-use egui::ComboBox;
-use crate::data::consts::{FORMS, GENRES};
-use crate::data::dictionary::inscriptions::{download, exit, file_history, last_days, lossless, overwrite_files, period};
-use crate::data::dictionary::Lang;
+mod helpers;
 
-#[derive(Debug)]
-pub struct MusicDownloaderApp {
+use crate::data::consts::{FORMS, GENRES};
+use crate::data::dictionary::*;
+use crate::data::dictionary::Lang;
+use eframe::{App, Frame};
+use egui::{Align, ComboBox, Layout, Pos2, TextureHandle, Ui};
+use std::path::PathBuf;
+
+pub struct MyApp {
     // Dropdowns
     genre: &'static str,
     form: &'static str,
     last: usize,
+    quantity: u64,
 
     // Toggle values
     file_history: bool,
@@ -18,77 +21,114 @@ pub struct MusicDownloaderApp {
     lossless: bool,
 
     // Options
-    language: Lang,
+    lang: Lang,
+    save_to: PathBuf,
+
+    // Wallets
+    qr_btc: Option<TextureHandle>,
+    qr_eth: Option<TextureHandle>,
+    show_qr: bool,
+    qr_pos: Pos2,
 }
-impl Default for MusicDownloaderApp {
+impl Default for MyApp {
     fn default() -> Self {
         Self {
             genre: "Techno",
             form: "mixes",
             last: 0,
+            quantity: 1,
+
             file_history: true,
             overwrite_files: false,
             period: true,
             lossless: true,
-            language: Lang::En,
+
+            lang: Lang::En,
+            save_to: PathBuf::from("Downloaded music"),
+
+            qr_btc: None,
+            qr_eth: None,
+            show_qr: false,
+            qr_pos: Default::default(),
         }
     }
 }
-impl App for MusicDownloaderApp {
-    fn ui(&mut self, ctx: &mut egui::Ui, _frame: &mut Frame) {
-        egui::CentralPanel::default().show(ctx, |ui| {
-            ui.group(|ui| {
-                ui.horizontal(|ui| {
-                    ComboBox::new("genre", "")
-                        .selected_text(&*self.genre)
-                        .width(200.0)
-                        .show_ui(ui, |ui| {
-                            for (text, _) in GENRES.iter() {
-                                ui.selectable_value(&mut self.genre, text, *text);
-                            }
-                        });
+impl App for MyApp {
+    fn ui(&mut self, ui: &mut Ui, _frame: &mut Frame) {
+        egui::CentralPanel::default().show(ui, |ui| {
 
-                    ComboBox::new("form", "")
-                        .selected_text(&*self.form)
-                        .show_ui(ui, |ui| {
-                            for form in FORMS.iter() {
-                                ui.selectable_value(&mut self.form, form, *form);
-                            }
-                        });
+            // --- Main Row
+            ui.horizontal(|ui| {
+                ComboBox::new("genre", "")
+                    .selected_text(&*self.genre)
+                    .width(250.)
+                    .show_ui(ui, |ui| {
+                        for (text, _) in GENRES.iter() {
+                            ui.selectable_value(&mut self.genre, text, *text);
+                        }
+                    });
 
-                    ComboBox::new("last", last_days(self.language))
-                        .selected_text(self.last.to_string())
-                        .show_ui(ui, |ui| {
-                            for i in 0..=10 {
-                                ui.selectable_value(&mut self.last, i, i.to_string());
-                            }
-                        });
-                });
+                ComboBox::new("form", "")
+                    .selected_text(&*self.form)
+                    .show_ui(ui, |ui| {
+                        for form in FORMS.iter() {
+                            ui.selectable_value(&mut self.form, form, *form);
+                        }
+                    });
+
+                ui.add(egui::DragValue::new(&mut self.last)
+                           .speed(1.0)
+                           .range(0.0..=1000.0)
+                );
+                let last =
+                    if self.period { inscriptions::last_days(self.lang) }
+                    else { inscriptions::last_files(self.lang) };
+                ui.label(last);
             });
 
-            // --- Checkbox Row ---
-            ui.group(|ui| {
-                ui.horizontal(|ui| {
-                    ui.toggle_value(&mut self.file_history, file_history(self.language));
-                    ui.toggle_value(&mut self.overwrite_files, overwrite_files(self.language));
-                    ui.toggle_value(&mut self.period, period(self.language));
-                    ui.toggle_value(&mut self.lossless, lossless(self.language));
-                })
+            // --- GAP ---
+            ui.add_space(10.);
+
+            // --- Toggles Row ---
+            ui.horizontal(|ui| {
+                ui.add_space(150.);
+                ui.toggle_value(&mut self.file_history, inscriptions::file_history(self.lang));
+                ui.toggle_value(&mut self.overwrite_files, inscriptions::overwrite_files(self.lang));
+                ui.toggle_value(&mut self.period, inscriptions::period(self.lang));
+                ui.toggle_value(&mut self.lossless, inscriptions::lossless(self.lang));
             });
 
+            // --- GAP ---
+            ui.add_space(30.);
+
+            // --- Safe File Row ---
+            ui.horizontal(|ui| {
+
+            });
+
+            // --- Progress Bar/Errors Row ---
+            ui.horizontal(|ui| {
+
+            });
 
             // --- Action Buttons Row ---
             ui.horizontal(|ui| {
-                // EXIT Button
-                if ui.button(exit(self.language)).clicked() {
-                    println!("EXIT clicked.");
-                }
+                ui.with_layout(Layout::bottom_up(Align::Min), |ui| {
+                    ui.label("v0.8");
+                    ui.hyperlink_to("hardglitch", "https://github.com/hardglitch");
+                    self.donate(ui);
+                    self.donate_popup(ui);
+                    self.lang_switcher(ui);
+                });
 
-                // DOWNLOAD Button
-                if ui.button(download(self.language)).clicked() {
-                    // Displaying the current state to confirm logic works
-                    println!("DOWNLOAD initiated with settings: {:?}", self);
-                }
+                ui.with_layout(Layout::bottom_up(Align::Max), |ui| {
+                    if ui.button(inscriptions::exit(self.lang)).clicked() {
+                        println!("EXIT clicked.");
+                    }
+                    if ui.button(inscriptions::download(self.lang)).clicked() {
+                        println!("DOWNLOAD initiated with settings");
+                    }
+                });
             });
         });
     }

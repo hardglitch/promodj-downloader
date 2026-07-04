@@ -1,6 +1,6 @@
 [package]
 name = "promodj-scraper"
-version = "0.1.0"
+version = "2.1.0"
 edition = "2024"
 build = "build.rs"
 
@@ -8,10 +8,11 @@ build = "build.rs"
 eframe = "0.35"
 egui = "0.35"
 image = { version = "0.25", default-features = false, features = ["png"] }
-egui-phosphor = "0.10"
+egui-phosphor = { path = "dependencies/egui-phosphor-updated" }
 rfd = "0.15"
-configparser = "3.1"
+configparser = "3.2"
 chrono = "0.4"
+strum = { version = "0.27", features = ["derive"] }
 
 [build-dependencies]
 embed-resource = "3"

@@ -4,7 +4,6 @@ pub const LOSSLESS_UNCOMPRESSED_FORMATS: [&str; 2] = [".wav", ".aiff"];
 pub const LOSSLESS_COMPRESSED_FORMATS: [&str; 1] = [".flac"];
 pub const LOSSY_FORMATS: [&str; 1] = [".mp3"];
 pub const FORMS: [&str; 3] = ["mixes", "tracks", "lives"];
-pub const LANGUAGES: [&str; 3] = ["en", "ru", "uk"];
 pub const GENRES: [(&str, &str); 257] =
     [
         ("2 Step", "2_step"),

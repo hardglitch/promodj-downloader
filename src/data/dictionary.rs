@@ -1,5 +1,26 @@
-#[derive(Debug, Default, Copy, Clone)]
+use strum::Display;
+
+#[derive(Debug, Default, Copy, Clone, Display)]
 pub enum Lang { #[default]En, Ru, Uk }
+impl Lang {
+    #[inline]
+    pub fn encode<'a>(lang: Lang) -> &'a str {
+        match lang {
+            Lang::En => "en",
+            Lang::Ru => "ru",
+            Lang::Uk => "uk",
+        }
+    }
+    #[inline]
+    pub fn decode(lang_name: &str) -> Option<Self> {
+        match lang_name.to_lowercase().as_str() {
+            "en"|"eng"|"english" => Some(Self::En),
+            "ru"|"rus"|"russian" => Some(Self::Ru),
+            "uk"|"ukr"|"ukrainian" => Some(Self::Uk),
+            _ => None,
+        }
+    }
+}
 
 pub mod errors {
     use super::Lang;
@@ -110,7 +131,7 @@ pub mod errors {
         }
     }
 }
-pub mod tool_tips {
+pub mod hints {
     use super::Lang;
 
     pub const fn genre<'a>(lang: Lang) -> &'a str {
@@ -155,6 +176,27 @@ pub mod tool_tips {
             Lang::Uk => "Цей прапорець працює, лише якщо Iсторія файлів ВИМКНЕНО!\nЯкщо увімкнено, переписувати існуючі файли під час скачування\nЯкщо выключено, завжди створювати нові файли",
         }
     }
+    pub const fn switch_language<'a>(lang: Lang) -> &'a str {
+        match lang {
+            Lang::En => "Switch language",
+            Lang::Ru => "Переключить язык",
+            Lang::Uk => "Змінити мову",
+        }
+    }
+    pub const fn copy<'a>(lang: Lang) -> &'a str {
+        match lang {
+            Lang::En => "Copy",
+            Lang::Ru => "Копировать",
+            Lang::Uk => "Копіювати",
+        }
+    }
+    pub const fn donate<'a>(lang: Lang) -> &'a str {
+        match lang {
+            Lang::En => "Donate",
+            Lang::Ru => "Пожертвовать",
+            Lang::Uk => "Пожертвувати",
+        }
+    }
 }
 pub mod ui_messages {
     use super::Lang;
@@ -197,13 +239,6 @@ pub mod inscriptions {
             Lang::En => "PromoDJ Music Downloader - Last download was _ days ago",
             Lang::Ru => "PromoDJ Загрузчик - Последняя загрузка была _ дней назад",
             Lang::Uk => "PromoDJ Завантажувач - Останнє завантаження було _ днів тому",
-        }
-    }
-    pub const fn files<'a>(lang: Lang) -> &'a str {
-        match lang {
-            Lang::En => "files",
-            Lang::Ru => "файлов",
-            Lang::Uk => "файлів",
         }
     }
     pub const fn period<'a>(lang: Lang) -> &'a str {
@@ -260,6 +295,13 @@ pub mod inscriptions {
             Lang::En => "Cancel",
             Lang::Ru => "Отмена",
             Lang::Uk => "Відміна",
+        }
+    }
+    pub const fn last_files<'a>(lang: Lang) -> &'a str {
+        match lang {
+            Lang::En => "last files",
+            Lang::Ru => "файлов",
+            Lang::Uk => "файлів",
         }
     }
     pub const fn last_days<'a>(lang: Lang) -> &'a str {
