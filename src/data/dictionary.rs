@@ -197,6 +197,13 @@ pub mod hints {
             Lang::Uk => "Пожертвувати",
         }
     }
+    pub const fn pause<'a>(lang: Lang) -> &'a str {
+        match lang {
+            Lang::En => "Pause",
+            Lang::Ru => "Пауза",
+            Lang::Uk => "Пауза",
+        }
+    }
 }
 pub mod ui_messages {
     use super::Lang;
@@ -274,13 +281,6 @@ pub mod inscriptions {
             Lang::En => "Download",
             Lang::Ru => "Скачать",
             Lang::Uk => "Завантажити",
-        }
-    }
-    pub const fn exit<'a>(lang: Lang) -> &'a str {
-        match lang {
-            Lang::En => "Exit",
-            Lang::Ru => "Выход",
-            Lang::Uk => "Вихід",
         }
     }
     pub const fn cancel<'a>(lang: Lang) -> &'a str {

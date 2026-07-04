@@ -1,0 +1,127 @@
+use eframe::emath::Align;
+use egui::{ComboBox, CursorIcon, Layout, Ui};
+use crate::data::consts::{FORMS, GENRES, VERSION};
+use crate::data::dictionary::{hints, inscriptions};
+use crate::ui::MyApp;
+
+impl MyApp {
+    pub(super) fn main_row(&mut self, ui: &mut Ui) {
+        ui.horizontal(|ui| {
+
+            // Genre
+            let state_before = self.genre;
+            ComboBox::new("genre", "")
+                .selected_text(self.genre)
+                .width(250.)
+                .show_ui(ui, |ui| {
+                    for (text, _) in GENRES.into_iter() {
+                        ui.selectable_value(&mut self.genre, text, text);
+                    }
+                }).response.on_hover_text(hints::genre(self.lang));
+            if self.genre != state_before { self.save_settings(); }
+
+            // Form
+            let state_before = self.form;
+            ComboBox::new("form", "")
+                .selected_text(self.form)
+                .show_ui(ui, |ui| {
+                    for form in FORMS.into_iter() {
+                        ui.selectable_value(&mut self.form, form, form);
+                    }
+                });
+            if self.form != state_before { self.save_settings(); }
+
+            // Quantity
+            let state_before = self.quantity;
+            ui.add(egui::DragValue::new(&mut self.quantity)
+                .speed(0.5)
+                .range(0.0..=1000.0)
+            ).on_hover_text(hints::quantity(self.lang));
+            if self.quantity != state_before { self.save_settings(); }
+
+            let last =
+                if self.period { inscriptions::last_days(self.lang) }
+                else { inscriptions::last_files(self.lang) };
+            ui.label(last);
+        });
+    }
+
+    pub(super) fn toggles_row(&mut self, ui: &mut Ui) {
+        ui.horizontal(|ui| {
+            ui.add_space(100.);
+
+            if ui.toggle_value(&mut self.file_history, inscriptions::file_history(self.lang))
+                .on_hover_cursor(CursorIcon::PointingHand)
+                .on_hover_text(hints::file_history(self.lang))
+                .clicked()
+            {
+                self.save_settings();
+            }
+
+            if !self.file_history { self.overwrite_files = false; }
+            if ui.toggle_value(&mut self.overwrite_files, inscriptions::overwrite_files(self.lang))
+                .on_hover_cursor(CursorIcon::PointingHand)
+                .on_hover_text(hints::overwrite_files(self.lang))
+                .clicked()
+            {
+                self.save_settings();
+            }
+
+            if ui.toggle_value(&mut self.period, inscriptions::period(self.lang))
+                .on_hover_cursor(CursorIcon::PointingHand)
+                .on_hover_text(hints::period(self.lang))
+                .clicked()
+            {
+                self.save_settings();
+            }
+
+            if ui.toggle_value(&mut self.lossless, inscriptions::lossless(self.lang))
+                .on_hover_cursor(CursorIcon::PointingHand)
+                .on_hover_text(hints::lossless(self.lang))
+                .clicked()
+            {
+                self.save_settings();
+            }
+        });
+    }
+
+    pub(super) fn save_file_row(&mut self, ui: &mut Ui) {
+        ui.horizontal(|ui| {
+            self.save_to(ui);
+            if let Some(p) = self.save_to.as_path().to_str() {
+                ui.label(p);
+            }
+        });
+    }
+
+    pub(super) fn progress_bar_row(&mut self, ui: &mut Ui) {
+        ui.horizontal(|ui| {
+            ui.label("PROGRESS_BAR");
+        });
+    }
+
+    pub(super) fn buttons(&mut self, ui: &mut Ui) {
+        ui.with_layout(Layout::right_to_left(Align::Max), |ui| {
+            if ui.button(egui::RichText::new(inscriptions::download(self.lang)).size(24.0))
+                .on_hover_cursor(CursorIcon::PointingHand)
+                .clicked()
+            {
+                println!("DOWNLOAD initiated with settings");
+            }
+        });
+    }
+
+    pub(super) fn bottom_row(&mut self, ui: &mut Ui) {
+        ui.with_layout(Layout::bottom_up(Align::Center), |ui| {
+            ui.horizontal(|ui| {
+                ui.with_layout(Layout::left_to_right(Align::Min), |ui| {
+                    ui.label(VERSION);
+                    ui.hyperlink_to("hardglitch", "https://github.com/hardglitch");
+                    self.donate(ui);
+                    self.donate_popup(ui);
+                    self.lang_switcher(ui);
+                });
+            });
+        });
+    }
+}

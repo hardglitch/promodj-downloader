@@ -23,7 +23,7 @@ fn main() {
 
     let options = NativeOptions {
         viewport: ViewportBuilder::default()
-            .with_inner_size([600.0, 200.0])
+            .with_inner_size([500.0, 200.0])
             .with_resizable(false)
             .with_icon(icon_data)
         ,

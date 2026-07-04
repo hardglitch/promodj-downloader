@@ -8,7 +8,7 @@ use eframe::emath::{vec2, Align, Rect};
 use eframe::epaint::{Color32, ColorImage, FontFamily};
 use eframe::epaint::text::{FontData, FontDefinitions};
 use eframe::epaint::textures::TextureOptions;
-use egui::{CursorIcon, Image, Label, Layout, RichText, Sense, Ui, Window};
+use egui::{CursorIcon, Image, Label, Layout, RichText, Sense, Ui, Vec2, Window};
 use egui::load::SizedTexture;
 use crate::data::consts::{FORMS, GENRES};
 use crate::data::dictionary::{hints, inscriptions, Lang};
@@ -157,11 +157,6 @@ impl MyApp {
         let th = ctx.egui_ctx.load_texture("save_tx", color_image, TextureOptions::default());
         self.save_tx = Some(th);
 
-        let img = include_bytes!("../../assets/copy.png");
-        let color_image = Self::process_image(img)?;
-        let th = ctx.egui_ctx.load_texture("copy_tx", color_image, TextureOptions::default());
-        self.copy_tx = Some(th);
-
         Ok(())
     }
 
@@ -196,25 +191,8 @@ impl MyApp {
         Ok(color_image)
     }
 
-    pub(super) fn copy(&self, text: &str, ui: &mut Ui) {
-        if let Some(tx_id) = &self.copy_tx {
-            let copy_img = Image::new(SizedTexture::new(tx_id.id(), vec2(20., 20.)));
-
-            if ui
-                .add(copy_img.sense(Sense::click()))
-                .on_hover_cursor(CursorIcon::PointingHand)
-                .on_hover_text(hints::copy(self.lang))
-                .clicked()
-            {
-                ui.copy_text(text.to_string());
-                // Alternative way
-                // ui.output_mut(|o| o.commands.push(OutputCommand::CopyText(text.to_string())));
-            };
-        }
-    }
-
     pub(super) fn lang_switcher(&mut self, ui: &mut Ui) {
-        let lang_text = RichText::new(self.lang.to_string());
+        let lang_text = RichText::new(self.lang.to_string().to_lowercase());
         let lang_btn = Label::new(lang_text);
         if ui
             .add(lang_btn.sense(Sense::click()))
@@ -251,31 +229,36 @@ impl MyApp {
     pub(super) fn donate_popup(&mut self, ui: &mut Ui) {
         if self.show_qr {
             let resp = Window::new("donate")
+                .fixed_size(Vec2::new(320., 160.0))
                 .title_bar(false)
                 .resizable(false)
                 .fixed_pos(self.qr_pos)
                 .show(ui, |ui| {
-                    ui.with_layout(Layout::top_down(Align::Center), |ui| {
+                    ui.with_layout(Layout::left_to_right(Align::Center), |ui| {
                         if let Some(th_btc) = &self.qr_btc &&
                            let Some(th_eth) = &self.qr_eth
                         {
-                            ui.add_space(10.0);
+                            ui.vertical(|ui| {
+                                let img = Image::new(SizedTexture::new(th_btc.id(), vec2(150.0, 150.0)));
+                                let wallet = "bc1qfyt84p8t85pg6597882cr7p04ank2263t7asa6";
+                                self.copy_to_clipboard(img, wallet, ui);
 
-                            ui.add(Image::new(SizedTexture::new(th_btc.id(), vec2(200.0, 200.0))));
-                            ui.add_space(5.0);
-                            ui.colored_label(Color32::ORANGE, "bitcoin");
-                            let wallet = "bc1qfyt84p8t85pg6597882cr7p04ank2263t7asa6";
-                            ui.label(wallet);
-                            self.copy(wallet, ui);
+                                ui.horizontal(|ui| {
+                                    ui.add_space(60.);
+                                    ui.colored_label(Color32::ORANGE, "bitcoin");
+                                });
+                            });
 
-                            ui.add_space(10.0);
+                            ui.vertical(|ui| {
+                                let img = Image::new(SizedTexture::new(th_eth.id(), vec2(150.0, 150.0)));
+                                let wallet = "0x1991F455084DfF493AC13D0473d92b47A80403F9";
+                                self.copy_to_clipboard(img, wallet, ui);
 
-                            ui.add(Image::new(SizedTexture::new(th_eth.id(), vec2(200.0, 200.0))));
-                            ui.add_space(5.0);
-                            ui.colored_label(Color32::from_rgb(157,167,218), "ethereum");
-                            let wallet = "0x1991F455084DfF493AC13D0473d92b47A80403F9";
-                            ui.label(wallet);
-                            self.copy(wallet, ui);
+                                ui.horizontal(|ui| {
+                                    ui.add_space(50.);
+                                    ui.colored_label(Color32::from_rgb(157,167,218), "ethereum");
+                                });
+                            });
                         }
                     });
                 });
@@ -295,6 +278,16 @@ impl MyApp {
                 }
             });
         }
+    }
+    fn copy_to_clipboard(&self, img: Image, text: &str, ui: &mut Ui) {
+        if ui
+            .add(img.sense(Sense::click()))
+            .on_hover_cursor(CursorIcon::PointingHand)
+            .on_hover_text(hints::copy(self.lang))
+            .clicked()
+        {
+            ui.copy_text(text.to_string());
+        };
     }
 
     pub(super) fn save_to(&mut self, ui: &mut Ui) {
@@ -316,6 +309,4 @@ impl MyApp {
             }
         }
     }
-    // Assuming 'self.overwrite_files' is a bool or similar state variable
-    // and 'self.lang' is your language state.
 }
