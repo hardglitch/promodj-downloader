@@ -50,8 +50,10 @@ impl MyApp {
         app
     }
 
-    fn save_settings(&mut self) {
+    pub(super) fn save_settings(&mut self) {
         let mut config = Ini::new();
+
+        config.set("default", "LastDownload", Some(self.last_download.to_string()));
         config.set("default", "Language", Some(self.lang.to_string()));
 
         let s = self.save_to.clone().into_string().ok();
@@ -67,10 +69,14 @@ impl MyApp {
 
         if let Err(e) = config.write("settings.ini") { log!("Config: {e}"); }
     }
-
     fn load_settings(&mut self) {
         let mut config = Ini::new();
         if config.load("settings.ini").is_ok() {
+
+            // Last download
+            if let Ok(Some(ts)) = config.getuint("default", "LastDownload") {
+                self.last_download = ts;
+            }
 
             // Language
             if let Some(lng) = config.get("default", "Language") &&
@@ -123,8 +129,8 @@ impl MyApp {
             }
 
             // Quantity
-            if let Ok(Some(q)) = config.getint("default", "Quantity") {
-                self.quantity = q as u64;
+            if let Ok(Some(q)) = config.getuint("default", "Quantity") {
+                self.quantity = q;
             }
         }
     }
@@ -306,7 +312,10 @@ impl MyApp {
                 .pick_folder()
             {
                 self.save_to = path;
+                self.save_settings();
             }
         }
     }
+    // Assuming 'self.overwrite_files' is a bool or similar state variable
+    // and 'self.lang' is your language state.
 }

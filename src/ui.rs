@@ -1,17 +1,16 @@
 mod helpers;
 
 use crate::data::consts::{FORMS, GENRES, VERSION};
-use crate::data::dictionary::*;
 use crate::data::dictionary::Lang;
+use crate::data::dictionary::*;
 use eframe::{App, Frame};
-use egui::{Align, ComboBox, Layout, Pos2, TextureHandle, Ui};
+use egui::{Align, ComboBox, CursorIcon, Layout, Pos2, TextureHandle, Ui};
 use std::path::PathBuf;
 
 pub struct MyApp {
     // Dropdowns
     genre: &'static str,
     form: &'static str,
-    last: usize,
     quantity: u64,
 
     // Toggle values
@@ -24,6 +23,7 @@ pub struct MyApp {
     lang: Lang,
     save_to: PathBuf,
     save_tx: Option<TextureHandle>,
+    last_download: u64,
 
     // Wallets
     qr_btc: Option<TextureHandle>,
@@ -37,7 +37,6 @@ impl Default for MyApp {
         Self {
             genre: "Techno",
             form: "mixes",
-            last: 0,
             quantity: 1,
 
             file_history: true,
@@ -48,6 +47,7 @@ impl Default for MyApp {
             lang: Lang::En,
             save_to: PathBuf::from("Downloaded music"),
             save_tx: None,
+            last_download: 0,
 
             qr_btc: None,
             qr_eth: None,
@@ -63,27 +63,38 @@ impl App for MyApp {
 
             // --- Main Row
             ui.horizontal(|ui| {
+
+                // Genre
+                let state_before = self.genre;
                 ComboBox::new("genre", "")
-                    .selected_text(&*self.genre)
+                    .selected_text(self.genre)
                     .width(250.)
                     .show_ui(ui, |ui| {
-                        for (text, _) in GENRES.iter() {
-                            ui.selectable_value(&mut self.genre, text, *text);
+                        for (text, _) in GENRES.into_iter() {
+                            ui.selectable_value(&mut self.genre, text, text);
                         }
-                    });
+                    }).response.on_hover_text(hints::genre(self.lang));
+                if self.genre != state_before { self.save_settings(); }
 
+                // Form
+                let state_before = self.form;
                 ComboBox::new("form", "")
-                    .selected_text(&*self.form)
+                    .selected_text(self.form)
                     .show_ui(ui, |ui| {
-                        for form in FORMS.iter() {
-                            ui.selectable_value(&mut self.form, form, *form);
+                        for form in FORMS.into_iter() {
+                            ui.selectable_value(&mut self.form, form, form);
                         }
                     });
+                if self.form != state_before { self.save_settings(); }
 
-                ui.add(egui::DragValue::new(&mut self.last)
-                           .speed(1.0)
+                // Quantity
+                let state_before = self.quantity;
+                ui.add(egui::DragValue::new(&mut self.quantity)
+                           .speed(0.5)
                            .range(0.0..=1000.0)
-                );
+                ).on_hover_text(hints::quantity(self.lang));
+                if self.quantity != state_before { self.save_settings(); }
+
                 let last =
                     if self.period { inscriptions::last_days(self.lang) }
                     else { inscriptions::last_files(self.lang) };
@@ -96,10 +107,39 @@ impl App for MyApp {
             // --- Toggles Row ---
             ui.horizontal(|ui| {
                 ui.add_space(150.);
-                ui.toggle_value(&mut self.file_history, inscriptions::file_history(self.lang));
-                ui.toggle_value(&mut self.overwrite_files, inscriptions::overwrite_files(self.lang));
-                ui.toggle_value(&mut self.period, inscriptions::period(self.lang));
-                ui.toggle_value(&mut self.lossless, inscriptions::lossless(self.lang));
+
+                if ui.toggle_value(&mut self.file_history, inscriptions::file_history(self.lang))
+                    .on_hover_cursor(CursorIcon::PointingHand)
+                    .on_hover_text(hints::file_history(self.lang))
+                    .clicked()
+                {
+                    self.save_settings();
+                }
+
+                if !self.file_history { self.overwrite_files = false; }
+                if ui.toggle_value(&mut self.overwrite_files, inscriptions::overwrite_files(self.lang))
+                    .on_hover_cursor(CursorIcon::PointingHand)
+                    .on_hover_text(hints::overwrite_files(self.lang))
+                    .clicked()
+                {
+                    self.save_settings();
+                }
+
+                if ui.toggle_value(&mut self.period, inscriptions::period(self.lang))
+                    .on_hover_cursor(CursorIcon::PointingHand)
+                    .on_hover_text(hints::period(self.lang))
+                    .clicked()
+                {
+                    self.save_settings();
+                }
+
+                if ui.toggle_value(&mut self.lossless, inscriptions::lossless(self.lang))
+                    .on_hover_cursor(CursorIcon::PointingHand)
+                    .on_hover_text(hints::lossless(self.lang))
+                    .clicked()
+                {
+                    self.save_settings();
+                }
             });
 
             // --- GAP ---
@@ -113,10 +153,16 @@ impl App for MyApp {
                 }
             });
 
+            // --- GAP ---
+            ui.add_space(10.);
+
             // --- Progress Bar/Errors Row ---
             ui.horizontal(|ui| {
-
+                ui.label("PROGRESS_BAR");
             });
+
+            // --- GAP ---
+            ui.add_space(10.);
 
             // --- Action Buttons Row ---
             ui.horizontal(|ui| {
@@ -129,10 +175,17 @@ impl App for MyApp {
                 });
 
                 ui.with_layout(Layout::left_to_right(Align::Max), |ui| {
-                    if ui.button(inscriptions::exit(self.lang)).clicked() {
+                    if ui.button(inscriptions::exit(self.lang))
+                        .on_hover_cursor(CursorIcon::PointingHand)
+                        .clicked()
+                    {
                         println!("EXIT clicked.");
                     }
-                    if ui.button(inscriptions::download(self.lang)).clicked() {
+
+                    if ui.button(inscriptions::download(self.lang))
+                        .on_hover_cursor(CursorIcon::PointingHand)
+                        .clicked()
+                    {
                         println!("DOWNLOAD initiated with settings");
                     }
                 });

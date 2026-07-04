@@ -169,7 +169,7 @@ pub mod hints {
             Lang::Uk => "Увімкнути/Вимкнути історію завантажених файлів",
         }
     }
-    pub const fn rewrite_files<'a>(lang: Lang) -> &'a str {
+    pub const fn overwrite_files<'a>(lang: Lang) -> &'a str {
         match lang {
             Lang::En => "This checkbox only works if File History is DISABLED!\nIf enabled, overwrites existing files on download\nIf disabled, always create new files",
             Lang::Ru => "Этот флажок работает только если История Файлов ВЫКЛЮЧЕНА!\nЕсли включено, переписывать существующие файлы при скачивании\nЕсли выключено, всегда создавать новые файлы",
@@ -227,13 +227,6 @@ pub mod ui_messages {
 pub mod inscriptions {
     use super::Lang;
 
-    pub const fn promodj_music_downloader<'a>(lang: Lang) -> &'a str {
-        match lang {
-            Lang::En => "PromoDJ Music Downloader",
-            Lang::Ru => "PromoDJ Загрузчик",
-            Lang::Uk => "PromoDJ Завантажувач",
-        }
-    }
     pub const fn promodj_music_downloader_extended<'a>(lang: Lang) -> &'a str {
         match lang {
             Lang::En => "PromoDJ Music Downloader - Last download was _ days ago",

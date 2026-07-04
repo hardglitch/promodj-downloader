@@ -1,9 +1,7 @@
-use std::time::UNIX_EPOCH;
+use crate::data::dictionary::{inscriptions, Lang};
 use configparser::ini::Ini;
 use egui::IconData;
-use crate::data::dictionary::{inscriptions, Lang};
-use crate::log;
-use std::io::Write;
+use std::time::UNIX_EPOCH;
 
 pub(super) fn load_embedded_icon(bytes: &[u8]) -> Result<IconData, image::ImageError> {
     let image = image::load_from_memory(bytes)?.into_rgba8();
