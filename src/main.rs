@@ -14,7 +14,7 @@ use std::io::Write;
 fn main() {
     Log::init("log.log", 10 * 1024 * 1024 * 1024);
 
-    let icon_bytes = include_bytes!("../assets/icon.png");
+    let icon_bytes = include_bytes!("../assets/icon.ico");
     let icon_data =
         match load_embedded_icon(icon_bytes) {
             Ok(d) => d,

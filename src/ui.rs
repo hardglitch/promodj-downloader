@@ -1,6 +1,6 @@
 mod helpers;
 
-use crate::data::consts::{FORMS, GENRES};
+use crate::data::consts::{FORMS, GENRES, VERSION};
 use crate::data::dictionary::*;
 use crate::data::dictionary::Lang;
 use eframe::{App, Frame};
@@ -121,7 +121,7 @@ impl App for MyApp {
             // --- Action Buttons Row ---
             ui.horizontal(|ui| {
                 ui.with_layout(Layout::left_to_right(Align::Min), |ui| {
-                    ui.label("v0.8");
+                    ui.label(VERSION);
                     ui.hyperlink_to("hardglitch", "https://github.com/hardglitch");
                     self.donate(ui);
                     self.donate_popup(ui);

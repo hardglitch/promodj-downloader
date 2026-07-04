@@ -1,4 +1,4 @@
-pub const VERSION: &str = "v2.0.0";
+pub const VERSION: &str = env!("PROJECT_VERSION");
 pub const DB_NAME: &str = "history.db";
 pub const LOSSLESS_UNCOMPRESSED_FORMATS: [&str; 2] = [".wav", ".aiff"];
 pub const LOSSLESS_COMPRESSED_FORMATS: [&str; 1] = [".flac"];
