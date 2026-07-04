@@ -7,8 +7,7 @@ build = "build.rs"
 [dependencies]
 eframe = "0.35"
 egui = "0.35"
-image = { version = "0.25", default-features = false, features = ["png"] }
-egui-phosphor = { path = "dependencies/egui-phosphor-updated" }
+image = { version = "0.25", default-features = false, features = ["png", "ico"] }
 rfd = "0.15"
 configparser = "3.2"
 chrono = "0.4"

@@ -23,10 +23,12 @@ pub struct MyApp {
     // Options
     lang: Lang,
     save_to: PathBuf,
+    save_tx: Option<TextureHandle>,
 
     // Wallets
     qr_btc: Option<TextureHandle>,
     qr_eth: Option<TextureHandle>,
+    copy_tx: Option<TextureHandle>,
     show_qr: bool,
     qr_pos: Pos2,
 }
@@ -45,9 +47,11 @@ impl Default for MyApp {
 
             lang: Lang::En,
             save_to: PathBuf::from("Downloaded music"),
+            save_tx: None,
 
             qr_btc: None,
             qr_eth: None,
+            copy_tx: None,
             show_qr: false,
             qr_pos: Default::default(),
         }
@@ -99,11 +103,14 @@ impl App for MyApp {
             });
 
             // --- GAP ---
-            ui.add_space(30.);
+            ui.add_space(10.);
 
             // --- Safe File Row ---
             ui.horizontal(|ui| {
-
+                self.save_to(ui);
+                if let Some(p) = self.save_to.as_path().to_str() {
+                    ui.label(p);
+                }
             });
 
             // --- Progress Bar/Errors Row ---
@@ -113,7 +120,7 @@ impl App for MyApp {
 
             // --- Action Buttons Row ---
             ui.horizontal(|ui| {
-                ui.with_layout(Layout::bottom_up(Align::Min), |ui| {
+                ui.with_layout(Layout::left_to_right(Align::Min), |ui| {
                     ui.label("v0.8");
                     ui.hyperlink_to("hardglitch", "https://github.com/hardglitch");
                     self.donate(ui);
@@ -121,7 +128,7 @@ impl App for MyApp {
                     self.lang_switcher(ui);
                 });
 
-                ui.with_layout(Layout::bottom_up(Align::Max), |ui| {
+                ui.with_layout(Layout::left_to_right(Align::Max), |ui| {
                     if ui.button(inscriptions::exit(self.lang)).clicked() {
                         println!("EXIT clicked.");
                     }

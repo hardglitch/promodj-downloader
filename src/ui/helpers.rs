@@ -1,3 +1,4 @@
+use image::{ImageError, ImageResult, Rgba};
 use std::path::PathBuf;
 use std::str::FromStr;
 use std::sync::Arc;
@@ -14,6 +15,7 @@ use crate::data::dictionary::{hints, inscriptions, Lang};
 use crate::log;
 use crate::ui::MyApp;
 use std::io::Write;
+use image::{GenericImageView, ImageBuffer};
 
 impl MyApp {
     pub fn new(ctx: &CreationContext) -> Self {
@@ -28,7 +30,6 @@ impl MyApp {
         fonts.families.get_mut(&FontFamily::Proportional).unwrap()
             .insert(0, "font".to_owned());
 
-        // egui_phosphor::add_to_fonts(&mut fonts, egui_phosphor::Variant::Regular);
         ctx.egui_ctx.set_fonts(fonts);
 
         // let mut style = (*ctx.egui_ctx.global_style()).clone();
@@ -45,7 +46,7 @@ impl MyApp {
 
         let mut app = Self::default();
         app.load_settings();
-        app.load_qr_textures(ctx);
+        if let Err(e) = app.load_textures(ctx) { log!("Load textures: {e}") }
         app
     }
 
@@ -128,35 +129,82 @@ impl MyApp {
         }
     }
 
-    fn load_qr_textures(&mut self, ctx: &CreationContext) {
-        let qr_btc = include_bytes!("../../assets/qr_bitcoin.png");
-        let image = image::load_from_memory(qr_btc).unwrap().into_rgba8();
+    fn load_textures(&mut self, ctx: &CreationContext) -> ImageResult<()> {
+        let img = include_bytes!("../../assets/qr_bitcoin.png");
+        let image = image::load_from_memory(img)?.into_rgba8();
         let size = [image.width() as usize, image.height() as usize];
         let color_image = ColorImage::from_rgba_unmultiplied(size, &image.into_raw());
         let th = ctx.egui_ctx.load_texture("qr_btc", color_image, TextureOptions::default());
         self.qr_btc = Some(th);
 
-        let qr_eth = include_bytes!("../../assets/qr_ethereum.png");
-        let image = image::load_from_memory(qr_eth).unwrap().into_rgba8();
+        let img = include_bytes!("../../assets/qr_ethereum.png");
+        let image = image::load_from_memory(img)?.into_rgba8();
         let size = [image.width() as usize, image.height() as usize];
         let color_image = ColorImage::from_rgba_unmultiplied(size, &image.into_raw());
         let th = ctx.egui_ctx.load_texture("qr_eth", color_image, TextureOptions::default());
         self.qr_eth = Some(th);
+
+        let img = include_bytes!("../../assets/save.ico");
+        let image = image::load_from_memory(img)?.into_rgba8();
+        let size = [image.width() as usize, image.height() as usize];
+        let color_image = ColorImage::from_rgba_unmultiplied(size, &image.into_raw());
+        let th = ctx.egui_ctx.load_texture("save_tx", color_image, TextureOptions::default());
+        self.save_tx = Some(th);
+
+        let img = include_bytes!("../../assets/copy.png");
+        let color_image = Self::process_image(img)?;
+        let th = ctx.egui_ctx.load_texture("copy_tx", color_image, TextureOptions::default());
+        self.copy_tx = Some(th);
+
+        Ok(())
+    }
+
+    // Paint any image to light-gray color
+    fn process_image(img: &[u8]) -> Result<ColorImage, ImageError> {
+        let original_image = image::load_from_memory(img)?;
+
+        // 1. Create a new buffer for the processed image
+        let mut processed_image = ImageBuffer::new(
+            original_image.width(),
+            original_image.height(),
+        );
+
+        // 2. Iterate and apply conditional logic
+        for y in 0..original_image.height() {
+            for x in 0..original_image.width() {
+                let pixel = original_image.get_pixel(x, y);
+                let alpha = pixel[3]; // Get the original alpha value
+
+                if alpha == 0 {
+                    processed_image.put_pixel(x, y, pixel);
+                } else {
+                    let new_pixel = Rgba([200, 200, 200, alpha]);
+                    processed_image.put_pixel(x, y, new_pixel);
+                }
+            }
+        }
+
+        // 3. Create the ColorImage from the processed data
+        let size = [processed_image.width() as usize, processed_image.height() as usize];
+        let color_image = ColorImage::from_rgba_unmultiplied(size, &processed_image.into_raw());
+        Ok(color_image)
     }
 
     pub(super) fn copy(&self, text: &str, ui: &mut Ui) {
-        let copy_text = RichText::new(egui_phosphor::regular::COPY).size(20.0);
-        let copy_btn = Label::new(copy_text);
-        if ui
-            .add(copy_btn.sense(Sense::click()))
-            .on_hover_cursor(CursorIcon::PointingHand)
-            .on_hover_text(hints::copy(self.lang))
-            .clicked()
-        {
-            ui.copy_text(text.to_string());
-            // Alternative way
-            // ui.output_mut(|o| o.commands.push(OutputCommand::CopyText(text.to_string())));
-        };
+        if let Some(tx_id) = &self.copy_tx {
+            let copy_img = Image::new(SizedTexture::new(tx_id.id(), vec2(20., 20.)));
+
+            if ui
+                .add(copy_img.sense(Sense::click()))
+                .on_hover_cursor(CursorIcon::PointingHand)
+                .on_hover_text(hints::copy(self.lang))
+                .clicked()
+            {
+                ui.copy_text(text.to_string());
+                // Alternative way
+                // ui.output_mut(|o| o.commands.push(OutputCommand::CopyText(text.to_string())));
+            };
+        }
     }
 
     pub(super) fn lang_switcher(&mut self, ui: &mut Ui) {
@@ -203,7 +251,7 @@ impl MyApp {
                 .show(ui, |ui| {
                     ui.with_layout(Layout::top_down(Align::Center), |ui| {
                         if let Some(th_btc) = &self.qr_btc &&
-                            let Some(th_eth) = &self.qr_eth
+                           let Some(th_eth) = &self.qr_eth
                         {
                             ui.add_space(10.0);
 
@@ -244,24 +292,21 @@ impl MyApp {
     }
 
     pub(super) fn save_to(&mut self, ui: &mut Ui) {
-        let save_text = RichText::new(inscriptions::save_to(self.lang).to_lowercase());
-        let save_btn = Label::new(save_text);
-        if ui
-            .add(save_btn.sense(Sense::click()))
-            .on_hover_cursor(CursorIcon::PointingHand)
-            // .on_hover_text(hints::export(self.lang))
-            .clicked()
-            // &&
-            // let Some(path) = rfd::FileDialog::new()
-            //     .set_file_name("export.txt")
-            //     .save_file()
-            // &&
-            // let Ok(mut file) = File::options()
-            //     .create_new(true)
-            //     .append(true)
-            //     .open(path)
-        {
-            println!("OK");
+        if let Some(tx_id) = &self.save_tx {
+            let save_img = Image::new(SizedTexture::new(tx_id.id(), vec2(24., 24.)));
+            let save_text = RichText::new(inscriptions::save_to(self.lang).to_lowercase());
+
+            if ui
+                .add(save_img.sense(Sense::click()))
+                .on_hover_cursor(CursorIcon::PointingHand)
+                .on_hover_text(save_text)
+                .clicked()
+                    &&
+            let Some(path) = rfd::FileDialog::new()
+                .pick_folder()
+            {
+                self.save_to = path;
+            }
         }
     }
 }
