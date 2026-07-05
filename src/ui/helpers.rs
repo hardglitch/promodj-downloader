@@ -17,7 +17,7 @@ use crate::ui::MyApp;
 use std::io::Write;
 use image::{GenericImageView, ImageBuffer};
 
-impl MyApp {
+impl<'a> MyApp<'a> {
     pub fn new(ctx: &CreationContext) -> Self {
         // ctx.egui_ctx.set_pixels_per_point(1.0);
 

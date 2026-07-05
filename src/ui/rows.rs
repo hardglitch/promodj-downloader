@@ -4,7 +4,7 @@ use crate::data::consts::{FORMS, GENRES, VERSION};
 use crate::data::dictionary::{hints, inscriptions};
 use crate::ui::MyApp;
 
-impl MyApp {
+impl<'a> MyApp<'a> {
     pub(super) fn main_row(&mut self, ui: &mut Ui) {
         ui.horizontal(|ui| {
 

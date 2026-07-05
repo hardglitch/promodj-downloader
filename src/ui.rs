@@ -6,10 +6,10 @@ use eframe::{App, Frame};
 use egui::{Pos2, TextureHandle, Ui};
 use std::path::PathBuf;
 
-pub struct MyApp {
+pub struct MyApp<'a> {
     // Dropdowns
-    genre: &'static str,
-    form: &'static str,
+    genre: &'a str,
+    form: &'a str,
     quantity: u64,
 
     // Toggle values
@@ -30,7 +30,7 @@ pub struct MyApp {
     show_qr: bool,
     qr_pos: Pos2,
 }
-impl Default for MyApp {
+impl<'a> Default for MyApp<'a> {
     fn default() -> Self {
         Self {
             genre: "Techno",
@@ -54,7 +54,7 @@ impl Default for MyApp {
         }
     }
 }
-impl App for MyApp {
+impl<'a> App for MyApp<'a> {
     fn ui(&mut self, ui: &mut Ui, _frame: &mut Frame) {
         egui::CentralPanel::default().show(ui, |ui| {
 
