@@ -29,8 +29,21 @@ impl Database {
 
         let tx = async move |mut conn: PoolConnection<DBType>| -> Result<(), sqlx::Error> {
             let query = "INSERT INTO file_history VALUES(?, ?);";
+            let link = link
+                .rsplit_once('.')
+                .map(|x| x.1)
+                .unwrap_or_default()
+                .chars()
+                .take(1000)
+                .collect::<String>();
+
+            if link.is_empty() {
+                log!("Invalid link to insert into database");
+                return Ok(())
+            }
+
             sqlx::query(sqlx::AssertSqlSafe(query))
-                .bind(link.chars().take(1000).collect::<String>())
+                .bind(link)
                 .bind(date as i64)
                 .execute(&mut *conn)
                 .await?;

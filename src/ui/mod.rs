@@ -2,12 +2,12 @@ mod helpers;
 mod rows;
 
 use crate::data::dictionary::Lang;
+use crate::db::dbcore::Database;
+use crate::logic::dsl::Data;
 use eframe::{App, Frame};
 use egui::{Pos2, TextureHandle, Ui};
 use std::path::PathBuf;
 use tokio::sync::mpsc::{Receiver, Sender};
-use crate::db::dbcore::Database;
-use crate::logic::dsl::{Command, Data};
 
 pub struct MyApp<'a> {
     // Dropdowns
