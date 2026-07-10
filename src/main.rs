@@ -1,17 +1,22 @@
+#![feature(async_fn_traits)]
+#![feature(hash_set_entry)]
 #![cfg_attr(not(debug_assertions), windows_subsystem = "windows")] // hide console window on Windows in release
 
 mod data;
-mod logging;
+mod utils;
 mod ui;
+mod logic;
 mod main_helpers;
+mod db;
 
-use crate::logging::Log;
-use crate::main_helpers::{load_embedded_icon, window_title};
 use crate::ui::MyApp;
 use eframe::{egui::ViewportBuilder, NativeOptions};
 use std::io::Write;
+use crate::main_helpers::{load_embedded_icon, window_title};
+use crate::utils::logging::Log;
 
-fn main() {
+#[tokio::main]
+async fn main() {
     Log::init("log.log", 10 * 1024 * 1024 * 1024);
 
     let icon_bytes = include_bytes!("../assets/icon.ico");

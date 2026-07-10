@@ -5,17 +5,17 @@ pub enum Command {
     Start,
     Pause,
     Stop,
+    Message,
+    Search,
 }
-#[derive(Debug, Serialize, Deserialize)]
-pub struct Data<T: ?Sized> {
-    pub command: Command,    // command
-    pub payload: T           // payload
+#[derive(Debug)]
+pub struct Data {
+    command: Command,          // command
+    payload: Option<Vec<u8>>   // payload
 }
-#[derive(Debug, Serialize, Deserialize)]
-pub struct Request<T: ?Sized> {
-    pub data: Data<T>        // data
-}
-#[derive(Debug, Serialize, Deserialize)]
-pub struct Response<R: ?Sized> {
-    pub data: R              // data
+impl Data {
+    pub fn new<'a, T: Serialize + Deserialize<'a>>(command: Command, payload: T) -> Self {
+        let payload = serde_json::to_vec(&payload).ok();
+        Self { command, payload }
+    }
 }

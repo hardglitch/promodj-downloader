@@ -1,8 +1,8 @@
 pub const VERSION: &str = env!("PROJECT_VERSION");
-pub const DB_NAME: &str = "history.db";
 pub const LOSSLESS_UNCOMPRESSED_FORMATS: [&str; 2] = [".wav", ".aiff"];
 pub const LOSSLESS_COMPRESSED_FORMATS: [&str; 1] = [".flac"];
 pub const LOSSY_FORMATS: [&str; 1] = [".mp3"];
+pub const MAX_QUANTITY: usize = 1000;
 pub const FORMS: [&str; 3] = ["mixes", "tracks", "lives"];
 pub const GENRES: [(&str, &str); 257] =
     [

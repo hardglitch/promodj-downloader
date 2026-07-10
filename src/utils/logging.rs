@@ -115,7 +115,7 @@ macro_rules! log {
         let mut meta_len = 0_u64;
         let mut log_file_size = 0_u64;
 
-        if let Some(m) = $crate::logging::LOG_FILE.get() &&
+        if let Some(m) = $crate::utils::logging::LOG_FILE.get() &&
 		   let Ok(log_file) = m.try_lock() &&
            let Ok(meta) = log_file.file().metadata()
 		{
@@ -126,15 +126,15 @@ macro_rules! log {
         if meta_len > log_file_size {
             let mut old_log_path = std::path::PathBuf::new();
 
-            if let Some(m) = $crate::logging::LOG_FILE.get().cloned() &&
+            if let Some(m) = $crate::utils::logging::LOG_FILE.get().cloned() &&
 	           let Ok(log_file) = m.try_lock()
             {
                 old_log_path = log_file.path().clone();
             }
-            $crate::logging::Log::re_init(old_log_path);
+            $crate::utils::logging::Log::re_init(old_log_path);
         }
 
-        if let Some(m) = $crate::logging::LOG_FILE.get().cloned() &&
+        if let Some(m) = $crate::utils::logging::LOG_FILE.get().cloned() &&
 		   let Ok(mut log_file) = m.try_lock()
 		{
             let time = chrono::offset::Utc::now();

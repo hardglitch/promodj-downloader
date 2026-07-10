@@ -2,6 +2,7 @@ use crate::logic::tools;
 use crate::logic::tools::clear_filename;
 use futures_util::StreamExt;
 use std::path::{Path, PathBuf};
+use reqwest::Client;
 use tokio::io::AsyncWriteExt;
 use tokio::sync::watch::Receiver;
 use crate::logic::dsl::Command;
@@ -22,7 +23,7 @@ impl<'a> DlFile<'a> {
         Ok(Self { link, name, path })
     }
 
-    pub async fn download(&mut self, overwrite: bool, control_rx: Receiver<Command>) -> anyhow::Result<()> {
+    pub async fn download(&mut self, client: Client, overwrite: bool, control_rx: Receiver<Command>) -> anyhow::Result<()> {
         if self.path.exists() && !overwrite {
             let new_filename = match tools::new_filename(&self.name) {
                 Some(n) => n,
@@ -33,7 +34,6 @@ impl<'a> DlFile<'a> {
             self.path = new_path;
         }
 
-        let client = reqwest::Client::new();
         let response = client.get(self.link).send().await?;
         if response.status() != 200 {
             return Err(anyhow::anyhow!("Bad status = {}", response.status()));

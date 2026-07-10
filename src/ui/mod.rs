@@ -5,33 +5,47 @@ use crate::data::dictionary::Lang;
 use eframe::{App, Frame};
 use egui::{Pos2, TextureHandle, Ui};
 use std::path::PathBuf;
+use tokio::sync::mpsc::{Receiver, Sender};
+use crate::db::dbcore::Database;
+use crate::logic::dsl::{Command, Data};
 
 pub struct MyApp<'a> {
     // Dropdowns
-    genre: &'a str,
-    form: &'a str,
-    quantity: u64,
+    pub genre: &'a str,
+    pub form: &'a str,
+    pub quantity: usize,
 
     // Toggle values
-    file_history: bool,
-    overwrite_files: bool,
-    period: bool,
-    lossless: bool,
+    pub file_history: bool,
+    pub overwrite_files: bool,
+    pub period: bool,
+    pub lossless: bool,
 
     // Options
-    lang: Lang,
+    pub lang: Lang,
     save_to: PathBuf,
     save_tx: Option<TextureHandle>,
-    last_download: u64,
+    last_download: usize,
 
     // Wallets
     qr_btc: Option<TextureHandle>,
     qr_eth: Option<TextureHandle>,
     show_qr: bool,
     qr_pos: Pos2,
+
+    // System
+    pub db: Option<Database>,
+    pub tx: Option<Sender<Data>>,
+    pub rx: Option<Receiver<Data>>,
+    is_canceled: bool,
+    pub client: reqwest::Client,
+
+    total_files: usize,
+    downloaded_files: usize,
 }
 impl<'a> Default for MyApp<'a> {
     fn default() -> Self {
+        let (tx, rx) = tokio::sync::mpsc::channel::<Data>(100);
         Self {
             genre: "Techno",
             form: "mixes",
@@ -51,6 +65,15 @@ impl<'a> Default for MyApp<'a> {
             qr_eth: None,
             show_qr: false,
             qr_pos: Default::default(),
+
+            db: None,
+            tx: Some(tx),
+            rx: Some(rx),
+            is_canceled: false,
+            client: reqwest::Client::new(),
+
+            total_files: 0,
+            downloaded_files: 0,
         }
     }
 }

@@ -1,21 +1,22 @@
+use crate::data::consts::{FORMS, GENRES};
+use crate::data::dictionary::{hints, inscriptions, Lang};
+use crate::ui::MyApp;
+use configparser::ini::Ini;
+use eframe::emath::{vec2, Align, Rect};
+use eframe::epaint::text::{FontData, FontDefinitions};
+use eframe::epaint::textures::TextureOptions;
+use eframe::epaint::{Color32, ColorImage, FontFamily};
+use eframe::CreationContext;
+use egui::load::SizedTexture;
+use egui::{CursorIcon, Image, Label, Layout, RichText, Sense, Ui, Vec2, Window};
+use image::{GenericImageView, ImageBuffer};
 use image::{ImageError, ImageResult, Rgba};
+use std::io::Write;
 use std::path::PathBuf;
 use std::str::FromStr;
 use std::sync::Arc;
-use configparser::ini::Ini;
-use eframe::CreationContext;
-use eframe::emath::{vec2, Align, Rect};
-use eframe::epaint::{Color32, ColorImage, FontFamily};
-use eframe::epaint::text::{FontData, FontDefinitions};
-use eframe::epaint::textures::TextureOptions;
-use egui::{CursorIcon, Image, Label, Layout, RichText, Sense, Ui, Vec2, Window};
-use egui::load::SizedTexture;
-use crate::data::consts::{FORMS, GENRES};
-use crate::data::dictionary::{hints, inscriptions, Lang};
+use crate::db::dbcore::{Database, DB_NAME};
 use crate::log;
-use crate::ui::MyApp;
-use std::io::Write;
-use image::{GenericImageView, ImageBuffer};
 
 impl<'a> MyApp<'a> {
     pub fn new(ctx: &CreationContext) -> Self {
@@ -45,6 +46,17 @@ impl<'a> MyApp<'a> {
         // ctx.egui_ctx.all_styles_mut(move |style| style.text_styles = style.text_styles.clone());
 
         let mut app = Self::default();
+
+        // Try open history.db
+        let (tx, mut rx) = tokio::sync::oneshot::channel::<Database>();
+        tokio::spawn(async move {
+            if let Some(db) = Database::create_or_open(DB_NAME).await {
+                db.create_history_db().await;
+                if tx.send(db).is_err() { log!("Database: MPSC channel send failed"); }
+            }
+        });
+        app.db = rx.try_recv().ok();
+
         app.load_settings();
         if let Err(e) = app.load_textures(ctx) { log!("Load textures: {e}") }
         app
@@ -75,7 +87,7 @@ impl<'a> MyApp<'a> {
 
             // Last download
             if let Ok(Some(ts)) = config.getuint("default", "LastDownload") {
-                self.last_download = ts;
+                self.last_download = ts as usize;
             }
 
             // Language
@@ -130,7 +142,7 @@ impl<'a> MyApp<'a> {
 
             // Quantity
             if let Ok(Some(q)) = config.getuint("default", "Quantity") {
-                self.quantity = q;
+                self.quantity = q as usize;
             }
         }
     }

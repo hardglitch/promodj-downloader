@@ -50,7 +50,8 @@ async fn test_download_via_localhost_integration() {
     let (_, rx) = watch::channel(Command::Start);
     let cur_dir = std::env::current_dir().unwrap();
     let mut dl_file = DlFile::new(TEST_LINK, &cur_dir).unwrap();
-    let res = dl_file.download(true, rx.clone()).await;
+    let client = reqwest::Client::new();
+    let res = dl_file.download(client, true, rx.clone()).await;
 
     assert!(res.is_ok(), "Download failed. Check if the server is running correctly.");
 
