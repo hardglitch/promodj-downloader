@@ -1,18 +1,22 @@
 mod helpers;
 mod rows;
 
+use crate::data::consts::{FORMS, GENRES};
 use crate::data::dictionary::Lang;
 use crate::db::dbcore::Database;
 use crate::logic::dsl::Data;
 use eframe::{App, Frame};
 use egui::{Pos2, TextureHandle, Ui};
 use std::path::PathBuf;
+use std::sync::Arc;
 use tokio::sync::mpsc::{Receiver, Sender};
+use tokio::sync::RwLock;
 
-pub struct MyApp<'a> {
+#[derive(Clone)]
+pub struct MyApp {
     // Dropdowns
-    pub genre: &'a str,
-    pub form: &'a str,
+    pub genre: &'static str,
+    pub form: &'static str,
     pub quantity: usize,
 
     // Toggle values
@@ -33,22 +37,29 @@ pub struct MyApp<'a> {
     show_qr: bool,
     qr_pos: Pos2,
 
+    // Progress bar/Messages
+    message: Arc<RwLock<Option<String>>>,
+
     // System
     pub db: Option<Database>,
-    pub tx: Option<Sender<Data>>,
-    pub rx: Option<Receiver<Data>>,
+    pub tx1: Arc<RwLock<Sender<Data>>>,
+    pub rx1: Arc<RwLock<Receiver<Data>>>,
+    pub tx2: Arc<RwLock<Sender<Data>>>,
+    pub rx2: Arc<RwLock<Receiver<Data>>>,
     is_canceled: bool,
     pub client: reqwest::Client,
 
     total_files: usize,
     downloaded_files: usize,
 }
-impl<'a> Default for MyApp<'a> {
+impl Default for MyApp {
     fn default() -> Self {
-        let (tx, rx) = tokio::sync::mpsc::channel::<Data>(100);
+        let (tx1, rx1) = tokio::sync::mpsc::channel::<Data>(100);
+        let (tx2, rx2) = tokio::sync::mpsc::channel::<Data>(100);
+
         Self {
-            genre: "Techno",
-            form: "mixes",
+            genre: GENRES[231].0, // Techno
+            form: FORMS[0],       // mixes
             quantity: 1,
 
             file_history: true,
@@ -66,9 +77,13 @@ impl<'a> Default for MyApp<'a> {
             show_qr: false,
             qr_pos: Default::default(),
 
+            message: Arc::default(),
+
             db: None,
-            tx: Some(tx),
-            rx: Some(rx),
+            tx1: Arc::new(RwLock::new(tx1)),
+            rx1: Arc::new(RwLock::new(rx1)),
+            tx2: Arc::new(RwLock::new(tx2)),
+            rx2: Arc::new(RwLock::new(rx2)),
             is_canceled: false,
             client: reqwest::Client::new(),
 
@@ -77,7 +92,7 @@ impl<'a> Default for MyApp<'a> {
         }
     }
 }
-impl<'a> App for MyApp<'a> {
+impl App for MyApp {
     fn ui(&mut self, ui: &mut Ui, _frame: &mut Frame) {
         egui::CentralPanel::default().show(ui, |ui| {
 

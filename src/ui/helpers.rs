@@ -1,5 +1,8 @@
 use crate::data::consts::{FORMS, GENRES};
 use crate::data::dictionary::{hints, inscriptions, Lang};
+use crate::db::dbcore::{Database, DB_NAME};
+use crate::log;
+use crate::logic::search::Link;
 use crate::ui::MyApp;
 use configparser::ini::Ini;
 use eframe::emath::{vec2, Align, Rect};
@@ -15,10 +18,11 @@ use std::io::Write;
 use std::path::PathBuf;
 use std::str::FromStr;
 use std::sync::Arc;
-use crate::db::dbcore::{Database, DB_NAME};
-use crate::log;
+use tokio::sync::RwLock;
+use crate::data::dictionary;
+use crate::logic::dsl::Command;
 
-impl<'a> MyApp<'a> {
+impl MyApp {
     pub fn new(ctx: &CreationContext) -> Self {
         // ctx.egui_ctx.set_pixels_per_point(1.0);
 
@@ -319,6 +323,53 @@ impl<'a> MyApp<'a> {
                 self.save_to = path;
                 self.save_settings();
             }
+        }
+    }
+
+    pub(super) fn download(&mut self) {
+        // 1. Change name and status of Download button
+        // 2. Create Pause button
+
+        // 3. Main logic
+        // self.message = Some(Arc::new(RwLock::new("START".to_owned())));
+        let form = self.form;
+        let genre = self.genre;
+        let quantity = self.quantity;
+        let period = self.period;
+        let lang = self.lang;
+        let file_history = self.file_history;
+        let lossless = self.lossless;
+        let client = self.client.clone();
+        let db = self.db.clone();
+        let message = self.message.clone();
+        let message_ = self.message.clone();
+        let tx1 = self.tx1.clone();
+        let tx2 = self.tx2.clone();
+        let rx1 = self.rx1.clone();
+        let rx2 = self.rx2.clone();
+
+        tokio::spawn(async move {
+            match Link::get_all_links(form, genre, quantity, period, lang, file_history, lossless, client, db, tx1, rx2).await {
+                Ok(links) => {
+                    // start download
+                    dbg!(links);
+                }
+                Err(e) => {
+                    let msg = dictionary::errors::unable_to_connect(lang);
+                    *message_.write().await = Some(msg.to_owned());
+                    log!("{e}");
+                }
+            }
+        });
+        if let Err(e) = Link::parse(lossless, tx2, rx1.clone()) { log!("{e}"); }
+
+        if let Ok(mut data) = rx1.try_write() &&
+            let Ok(data) = data.try_recv() &&
+            matches!(data.command(), Command::Message) &&
+            let Some(data_msg) = data.payload::<String>() &&
+            let Ok(mut ui_msg) = message.clone().try_write()
+        {
+            *ui_msg = Some(data_msg);
         }
     }
 }

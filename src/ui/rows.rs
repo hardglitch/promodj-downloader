@@ -1,10 +1,12 @@
+use std::sync::Arc;
 use eframe::emath::Align;
-use egui::{ComboBox, CursorIcon, Layout, Ui};
+use egui::{ComboBox, CursorIcon, Label, Layout, Ui};
+use tokio::sync::RwLock;
 use crate::data::consts::{FORMS, GENRES, VERSION};
 use crate::data::dictionary::{hints, inscriptions};
 use crate::ui::MyApp;
 
-impl<'a> MyApp<'a> {
+impl MyApp {
     pub(super) fn main_row(&mut self, ui: &mut Ui) {
         ui.horizontal(|ui| {
 
@@ -96,7 +98,13 @@ impl<'a> MyApp<'a> {
 
     pub(super) fn progress_bar_row(&mut self, ui: &mut Ui) {
         ui.horizontal(|ui| {
-            ui.label("PROGRESS_BAR");
+            if let Ok(msg) = self.message.clone().try_read() &&
+               let Some(msg) = &*msg
+            {
+                ui.with_layout(egui::Layout::centered_and_justified(egui::Direction::TopDown), |ui| {
+                    ui.label(msg);
+                });
+            }
         });
     }
 
@@ -106,7 +114,7 @@ impl<'a> MyApp<'a> {
                 .on_hover_cursor(CursorIcon::PointingHand)
                 .clicked()
             {
-                println!("DOWNLOAD initiated with settings");
+                self.download();
             }
         });
     }
