@@ -9,7 +9,7 @@ use scraper::{Html, Selector};
 use std::collections::{HashMap, HashSet};
 use std::io::Write;
 use std::sync::Arc;
-use tokio::sync::mpsc::{Receiver, Sender};
+use tokio::sync::mpsc::Sender;
 use tokio::sync::RwLock;
 
 pub struct LinkParams<'a> {
@@ -22,15 +22,14 @@ pub struct LinkParams<'a> {
     pub lossless: bool,
     pub client: reqwest::Client,
     pub db: Option<Database>,
-    pub tx1: Arc<RwLock<Sender<Data>>>,
-    pub rx2: Arc<RwLock<Receiver<Data>>>,
+    pub tx: Arc<RwLock<Sender<Data>>>,
 }
 
 pub struct Link;
 impl Link {
     pub async fn get_all_links<'a>(link_params: LinkParams<'a>) -> anyhow::Result<Option<Vec<String>>> {
 
-        // 1. Get a raw link set
+        // 1. Get the link set
         let mut found_links: HashSet<String> = HashSet::new();
         let mut page_number = 1;
 
@@ -39,47 +38,45 @@ impl Link {
         {
             // If we found nothing on this page, stop searching
             if page_number > 1 && found_links.is_empty() { break; }
-            let raw_page = Self::get_raw_page(
+
+            let page = Page::new(
                 page_number,
                 link_params.form,
                 link_params.genre,
                 link_params.quantity,
                 link_params.lossless,
                 link_params.period,
-                link_params.client.clone()
-            ).await?;
-            match raw_page {
-                Some(raw_html) => {
-                    let data = Data::new(Command::Temp, raw_html);
-                    link_params.tx1.read().await.send(data).await?;
-                }
-                None => {
-                    let msg = dictionary::errors::unable_to_connect(link_params.lang);
-                    log!("{msg}");
-                    let data = Data::new(Command::Message, msg);
-                    link_params.tx1.read().await.send(data).await?;
-                    return Ok(None);
-                }
-            };
+                link_params.client.clone(),
+            ).await;
 
-            if let Some(data) = link_params.rx2.write().await.recv().await &&
-               matches!(data.command(), Command::Temp) &&
-               let Some(found_links_on_page) = data.payload::<HashSet<String>>()
-            {
-                if !found_links_on_page.is_empty() {
-                    found_links.extend(found_links_on_page);
-                } else {
-                    // If we found nothing on this page, stop searching
-                    break;
-                }
-            }
+            let found_links_on_page =
+                match page.get_raw_page().await? {
+                    Some(raw_page) => {
+                        let html = Html::parse_document(&raw_page);
+                        Self.get_filtered_links(&html, link_params.lossless)?
+                    }
+                    None => {
+                        let msg = dictionary::errors::no_links_to_filtering(link_params.lang);
+                        let data = Data::new(Command::Message, msg);
+                        link_params.tx.read().await.send(data).await?;
+                        return Ok(None);
+                    }
+                };
+
             let data = Data::new(Command::Search, page_number % 5);
-            link_params.tx1.read().await.send(data).await?;
+            link_params.tx.read().await.send(data).await?;
+
+            if !found_links_on_page.is_empty() {
+                found_links.extend(found_links_on_page);
+            }
+            // If we found nothing on this page, stop searching
+            else { break; }
 
             page_number += 1;
         }
 
-        // 2. Convert {"1.wav", "1.flac", "2.flac", "2.wav"} to {'1.flac', '2.flac'}
+        // 2. Remove duplicates
+        //    Convert {"1.wav", "1.flac", "2.flac", "2.wav"} to {'1.flac', '2.flac'}
         let mut unique_links: HashMap<&str, &str> = HashMap::new();
         for link in &found_links {
             let mut split = link.rsplitn(2, '.');
@@ -100,11 +97,11 @@ impl Link {
         if unique_links.is_empty() {
             let msg = dictionary::errors::no_links_to_filtering(link_params.lang);
             let data = Data::new(Command::Message, msg);
-            link_params.tx1.read().await.send(data).await?;
+            link_params.tx.read().await.send(data).await?;
             return Ok(None);
         }
 
-        // 3. Checking found links
+        // 3. Check found links in the history
         if link_params.file_history && let Some(db) = link_params.db {
             db.filter_by_history(&mut unique_links).await;
         }
@@ -120,47 +117,11 @@ impl Link {
         if found_links.is_empty() {
             let msg = dictionary::errors::no_links_to_download(link_params.lang);
             let data = Data::new(Command::Message, msg);
-            link_params.tx1.read().await.send(data).await?;
+            link_params.tx.read().await.send(data).await?;
             return Ok(None);
         }
 
         Ok(Some(found_links))
-    }
-
-    // Calling outside
-    pub fn parse(
-        lossless: bool,
-        tx2: Arc<RwLock<Sender<Data>>>,
-        rx1: Arc<RwLock<Receiver<Data>>>,
-    )
-        -> anyhow::Result<()>
-    {
-        if let Ok(mut data) = rx1.try_write() &&
-           let Ok(data) =  data.try_recv() &&
-           matches!(data.command(), Command::Temp) &&
-           let Some(raw_html) = data.payload::<String>()
-        {
-            let html = Html::parse_document(&raw_html);
-            let found_links_on_page = Self.get_filtered_links(&html, lossless)?;
-            let data = Data::new(Command::Temp, found_links_on_page);
-            tx2.try_read()?.try_send(data)?;
-        }
-        Ok(())
-    }
-
-    async fn get_raw_page(
-        page_number: usize,
-        form: &str,
-        genre: &str,
-        quantity: usize,
-        lossless: bool,
-        period: bool,
-        client: reqwest::Client,
-    )
-        -> anyhow::Result<Option<String>>
-    {
-        let page = Page::new(page_number, form, genre, quantity, lossless, period).await;
-        page.get_raw_html(client).await
     }
 
     pub fn get_filtered_links(&self, link_massive: &Html, lossless: bool) -> anyhow::Result<HashSet<String>> {
@@ -189,6 +150,7 @@ impl Link {
 
 struct Page {
     link: String,
+    client: reqwest::Client,
 }
 impl Page {
     async fn new(
@@ -198,6 +160,7 @@ impl Page {
         quantity: usize,
         lossless: bool,
         period: bool,
+        client: reqwest::Client,
     )
         -> Self
     {
@@ -207,16 +170,16 @@ impl Page {
             else { String::new() };
 
         let link = format!("https://promodj.com/{form}/{genre}?{period}bitrate={bitrate}&page={number}");
-        Self { link }
+        Self { link, client }
     }
 
-    async fn get_raw_html(&self, client: reqwest::Client) -> anyhow::Result<Option<String>> {
-        let response = client.get(&self.link).send().await?;
+    async fn get_raw_page(&self) -> anyhow::Result<Option<String>> {
+        let response = self.client.get(&self.link).send().await?;
         if response.status() != 200 {
             log!("Bad status during parsing = {}", response.status());
             return Ok(None);
         }
-        let text = response.text().await?;
-        Ok(Some(text))
+        let raw_text = response.text().await?;
+        Ok(Some(raw_text))
     }
 }

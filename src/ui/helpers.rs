@@ -330,7 +330,6 @@ impl MyApp {
         // 2. Create Pause button
 
         // 3. Main logic
-        // self.message = Some(Arc::new(RwLock::new("START".to_owned())));
         let form = self.form;
         let genre = self.genre;
         let quantity = self.quantity;
@@ -342,10 +341,8 @@ impl MyApp {
         let db = self.db.clone();
         let message = self.message.clone();
         let message_ = self.message.clone();
-        let tx1 = self.tx1.clone();
-        let tx2 = self.tx2.clone();
-        let rx1 = self.rx1.clone();
-        let rx2 = self.rx2.clone();
+        let tx = self.tx1.clone();
+        let rx = self.rx1.clone();
 
         tokio::spawn(async move {
             let link_params = LinkParams {
@@ -358,8 +355,7 @@ impl MyApp {
                 lossless,
                 client,
                 db,
-                tx1,
-                rx2,
+                tx,
             };
             match Link::get_all_links(link_params).await {
                 Ok(links) => {
@@ -373,9 +369,8 @@ impl MyApp {
                 }
             }
         });
-        if let Err(e) = Link::parse(lossless, tx2, rx1.clone()) { log!("{e}"); }
 
-        if let Ok(mut data) = rx1.try_write() &&
+        if let Ok(mut data) = rx.try_write() &&
             let Ok(data) = data.try_recv() &&
             matches!(data.command(), Command::Message) &&
             let Some(data_msg) = data.payload::<String>() &&
