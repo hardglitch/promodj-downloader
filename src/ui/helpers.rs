@@ -1,8 +1,10 @@
 use crate::data::consts::{FORMS, GENRES};
+use crate::data::dictionary;
 use crate::data::dictionary::{hints, inscriptions, Lang};
 use crate::db::dbcore::{Database, DB_NAME};
 use crate::log;
-use crate::logic::search::Link;
+use crate::logic::dsl::Command;
+use crate::logic::search::{Link, LinkParams};
 use crate::ui::MyApp;
 use configparser::ini::Ini;
 use eframe::emath::{vec2, Align, Rect};
@@ -18,9 +20,6 @@ use std::io::Write;
 use std::path::PathBuf;
 use std::str::FromStr;
 use std::sync::Arc;
-use tokio::sync::RwLock;
-use crate::data::dictionary;
-use crate::logic::dsl::Command;
 
 impl MyApp {
     pub fn new(ctx: &CreationContext) -> Self {
@@ -349,7 +348,20 @@ impl MyApp {
         let rx2 = self.rx2.clone();
 
         tokio::spawn(async move {
-            match Link::get_all_links(form, genre, quantity, period, lang, file_history, lossless, client, db, tx1, rx2).await {
+            let link_params = LinkParams {
+                form,
+                genre,
+                quantity,
+                period,
+                lang,
+                file_history,
+                lossless,
+                client,
+                db,
+                tx1,
+                rx2,
+            };
+            match Link::get_all_links(link_params).await {
                 Ok(links) => {
                     // start download
                     dbg!(links);

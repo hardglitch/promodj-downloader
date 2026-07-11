@@ -1,8 +1,9 @@
 use crate::data::consts::{LOSSLESS_COMPRESSED_FORMATS, LOSSLESS_UNCOMPRESSED_FORMATS, LOSSY_FORMATS, MAX_QUANTITY};
 use crate::data::dictionary;
+use crate::data::dictionary::Lang;
+use crate::db::dbcore::Database;
 use crate::log;
 use crate::logic::dsl::{Command, Data};
-use crate::ui::MyApp;
 use anyhow::anyhow;
 use scraper::{Html, Selector};
 use std::collections::{HashMap, HashSet};
@@ -10,52 +11,58 @@ use std::io::Write;
 use std::sync::Arc;
 use tokio::sync::mpsc::{Receiver, Sender};
 use tokio::sync::RwLock;
-use crate::data::dictionary::Lang;
-use crate::db::dbcore::Database;
+
+pub struct LinkParams<'a> {
+    pub form: &'a str,
+    pub genre: &'a str,
+    pub quantity: usize,
+    pub period: bool,
+    pub lang: Lang,
+    pub file_history: bool,
+    pub lossless: bool,
+    pub client: reqwest::Client,
+    pub db: Option<Database>,
+    pub tx1: Arc<RwLock<Sender<Data>>>,
+    pub rx2: Arc<RwLock<Receiver<Data>>>,
+}
 
 pub struct Link;
 impl Link {
-    pub async fn get_all_links(
-        form: &str,
-        genre: &str,
-        quantity: usize,
-        period: bool,
-        lang: Lang,
-        file_history: bool,
-        lossless: bool,
-        client: reqwest::Client,
-        db: Option<Database>,
-        tx1: Arc<RwLock<Sender<Data>>>,
-        rx2: Arc<RwLock<Receiver<Data>>>,
-    )
-        -> anyhow::Result<Option<Vec<String>>>
-    {
+    pub async fn get_all_links<'a>(link_params: LinkParams<'a>) -> anyhow::Result<Option<Vec<String>>> {
 
         // 1. Get a raw link set
         let mut found_links: HashSet<String> = HashSet::new();
         let mut page_number = 1;
 
-        while (found_links.len() < quantity && !period) ||
-              (found_links.len() < MAX_QUANTITY && period)
+        while (found_links.len() < link_params.quantity && !link_params.period) ||
+              (found_links.len() < MAX_QUANTITY && link_params.period)
         {
             // If we found nothing on this page, stop searching
             if page_number > 1 && found_links.is_empty() { break; }
-            let raw_page = Self::get_raw_page(page_number, form, genre, quantity, lossless, period, client.clone()).await?;
+            let raw_page = Self::get_raw_page(
+                page_number,
+                link_params.form,
+                link_params.genre,
+                link_params.quantity,
+                link_params.lossless,
+                link_params.period,
+                link_params.client.clone()
+            ).await?;
             match raw_page {
                 Some(raw_html) => {
                     let data = Data::new(Command::Temp, raw_html);
-                    tx1.read().await.send(data).await?;
+                    link_params.tx1.read().await.send(data).await?;
                 }
                 None => {
-                    let msg = dictionary::errors::unable_to_connect(lang);
+                    let msg = dictionary::errors::unable_to_connect(link_params.lang);
                     log!("{msg}");
                     let data = Data::new(Command::Message, msg);
-                    tx1.read().await.send(data).await?;
+                    link_params.tx1.read().await.send(data).await?;
                     return Ok(None);
                 }
             };
 
-            if let Some(data) = rx2.write().await.recv().await &&
+            if let Some(data) = link_params.rx2.write().await.recv().await &&
                matches!(data.command(), Command::Temp) &&
                let Some(found_links_on_page) = data.payload::<HashSet<String>>()
             {
@@ -67,7 +74,7 @@ impl Link {
                 }
             }
             let data = Data::new(Command::Search, page_number % 5);
-            tx1.read().await.send(data).await?;
+            link_params.tx1.read().await.send(data).await?;
 
             page_number += 1;
         }
@@ -91,14 +98,14 @@ impl Link {
         }
 
         if unique_links.is_empty() {
-            let msg = dictionary::errors::no_links_to_filtering(lang);
+            let msg = dictionary::errors::no_links_to_filtering(link_params.lang);
             let data = Data::new(Command::Message, msg);
-            tx1.read().await.send(data).await?;
+            link_params.tx1.read().await.send(data).await?;
             return Ok(None);
         }
 
         // 3. Checking found links
-        if file_history && let Some(db) = db {
+        if link_params.file_history && let Some(db) = link_params.db {
             db.filter_by_history(&mut unique_links).await;
         }
 
@@ -107,13 +114,13 @@ impl Link {
             .collect::<Vec<String>>();
 
         // 4. Truncate found links
-        if period { found_links.truncate(MAX_QUANTITY) }
-        else { found_links.truncate(quantity) };
+        if link_params.period { found_links.truncate(MAX_QUANTITY) }
+        else { found_links.truncate(link_params.quantity) };
 
         if found_links.is_empty() {
-            let msg = dictionary::errors::no_links_to_download(lang);
+            let msg = dictionary::errors::no_links_to_download(link_params.lang);
             let data = Data::new(Command::Message, msg);
-            tx1.read().await.send(data).await?;
+            link_params.tx1.read().await.send(data).await?;
             return Ok(None);
         }
 

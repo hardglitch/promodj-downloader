@@ -1,10 +1,8 @@
-use std::sync::Arc;
-use eframe::emath::Align;
-use egui::{ComboBox, CursorIcon, Label, Layout, Ui};
-use tokio::sync::RwLock;
 use crate::data::consts::{FORMS, GENRES, VERSION};
 use crate::data::dictionary::{hints, inscriptions};
 use crate::ui::MyApp;
+use eframe::emath::Align;
+use egui::{ComboBox, CursorIcon, Layout, Ui};
 
 impl MyApp {
     pub(super) fn main_row(&mut self, ui: &mut Ui) {
