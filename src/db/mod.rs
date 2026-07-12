@@ -3,14 +3,14 @@ pub mod dbcore;
 use crate::db::dbcore::{DBType, Database};
 use crate::log;
 use sqlx_core::pool::PoolConnection;
-use std::collections::{HashMap, HashSet};
+use std::collections::HashMap;
 use std::io::Write;
-use std::time::{SystemTime, UNIX_EPOCH};
+use crate::data::consts::{LOSSLESS_COMPRESSED_FORMATS, LOSSLESS_UNCOMPRESSED_FORMATS, LOSSY_FORMATS};
 
 impl Database {
     pub async fn create_history_db(&self) -> Option<()> {
         let tx = async move |mut conn: PoolConnection<DBType>| -> Result<(), sqlx::Error> {
-            let query = "CREATE TABLE IF NOT EXISTS file_history(link TEXT NOT NULL, date INTEGER NOT NULL);";
+            let query = "CREATE TABLE IF NOT EXISTS file_history(link TEXT NOT NULL);";
             sqlx::query(sqlx::AssertSqlSafe(query)).execute(&mut *conn).await?;
             Ok(())
         };
@@ -18,20 +18,10 @@ impl Database {
     }
 
     pub async fn write_file_history(&self, link: &str) -> Option<()> {
-        let date =
-            match SystemTime::now().duration_since(UNIX_EPOCH) {
-                Ok(d) => d.as_secs(),
-                Err(e) => {
-                    log!("{e}");
-                    return None
-                }
-            };
-
         let tx = async move |mut conn: PoolConnection<DBType>| -> Result<(), sqlx::Error> {
-            let query = "INSERT INTO file_history VALUES(?, ?);";
             let link = link
                 .rsplit_once('.')
-                .map(|x| x.1)
+                .map(|(_ext, name)| name)
                 .unwrap_or_default()
                 .chars()
                 .take(1000)
@@ -42,9 +32,8 @@ impl Database {
                 return Ok(())
             }
 
+            let query = format!("INSERT INTO file_history VALUES({link});");
             sqlx::query(sqlx::AssertSqlSafe(query))
-                .bind(link)
-                .bind(date as i64)
                 .execute(&mut *conn)
                 .await?;
             Ok(())
@@ -58,8 +47,24 @@ impl Database {
             let records: Vec<String> = sqlx::query_scalar(sqlx::AssertSqlSafe(query))
                 .fetch_all(&mut *conn)
                 .await?;
-            let history_set = records.iter().map(|s| s.as_str()).collect::<HashSet<&str>>();
-            let _ = unique_links.extract_if(|name, _ext| history_set.contains(name));
+            let _ = unique_links.extract_if(|name, _ext|
+                records.contains(&name.to_string())
+                    ||
+                // for old databases created the app version <= 1.5.7
+                records.iter().any(|rec| {
+                    rec
+                        .rsplit_once('.')
+                        .into_iter()
+                        .filter_map(|(ext_, name_)| {
+                            if LOSSLESS_UNCOMPRESSED_FORMATS.contains(&ext_) ||
+                               LOSSLESS_COMPRESSED_FORMATS.contains(&ext_) ||
+                               LOSSY_FORMATS.contains(&ext_)
+                            { Some(name_) }
+                            else { None }
+                        })
+                        .any(|name_| &name_ == name)
+                })
+            );
             Ok(())
         };
         self.call(tx).await
