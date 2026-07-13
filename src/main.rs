@@ -7,6 +7,8 @@ mod ui;
 mod logic;
 mod main_helpers;
 mod db;
+#[cfg(test)]
+mod main_tests;
 
 use crate::ui::MyApp;
 use eframe::{egui::ViewportBuilder, NativeOptions};

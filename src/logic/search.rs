@@ -1,4 +1,4 @@
-use crate::data::consts::{LOSSLESS_COMPRESSED_FORMATS, LOSSLESS_UNCOMPRESSED_FORMATS, LOSSY_FORMATS, MAX_QUANTITY};
+use crate::data::consts::{GENRES, LOSSLESS_COMPRESSED_FORMATS, LOSSLESS_UNCOMPRESSED_FORMATS, LOSSY_FORMATS, MAX_QUANTITY};
 use crate::data::dictionary;
 use crate::data::dictionary::Lang;
 use crate::db::dbcore::Database;
@@ -53,6 +53,7 @@ impl Link {
                 match page.get_raw_page().await? {
                     Some(raw_page) => {
                         let html = Html::parse_document(&raw_page);
+                        dbg!(&html);
                         Self.get_filtered_links(&html, link_params.lossless)?
                     }
                     None => {
@@ -124,24 +125,30 @@ impl Link {
         Ok(Some(found_links))
     }
 
-    pub fn get_filtered_links(&self, link_massive: &Html, lossless: bool) -> anyhow::Result<HashSet<String>> {
+    pub fn get_filtered_links(&self, raw_html: &Html, lossless: bool) -> anyhow::Result<HashSet<String>> {
         let formats: Vec<&str> = if lossless {
             LOSSLESS_COMPRESSED_FORMATS.iter().chain(&LOSSLESS_UNCOMPRESSED_FORMATS).copied().collect()
         } else {
             LOSSY_FORMATS.to_vec()
         };
 
-        let selector = match Selector::parse("a[href]") {
+        let selector = match Selector::parse("a") {
             Ok(s) => s,
             Err(e) => { return Err(anyhow!("{e}")) }
         };
         let mut links: HashSet<String> = HashSet::new();
-        let elements = link_massive.select(&selector);
+        let elements = raw_html.select(&selector);
         for element in elements {
-            if let Some(href) = element.value().attr("href") &&
-               formats.iter().any(|f| href.ends_with(f)) && href.find("/source/") > Some(1)
-            {
-                links.insert(href.to_owned());
+            if let Some(href) = element.value().attr("href") {
+                let format_matches = formats.iter().any(|f| href.ends_with(f));
+
+                let source_condition =
+                    if cfg!(feature = "test") { true }            // Always pass if 'test' is on
+                    else { href.find("/source/") > Some(1) }; // Check required if 'test' is off
+
+                if format_matches && source_condition {
+                    links.insert(href.to_owned());
+                }
             }
         }
         Ok(links)
@@ -169,7 +176,14 @@ impl Page {
             if period { format!("period=last&period_last={quantity}d&") }
             else { String::new() };
 
-        let link = format!("https://promodj.com/{form}/{genre}?{period}bitrate={bitrate}&page={number}");
+        let genre =
+            if let Some((_, link_name)) = GENRES.iter().find(|(name, _)| name == &genre) { link_name }
+            else { log!("GENRES parsing error"); "" };
+
+        let link =
+            if cfg!(feature = "test") { format!("http://localhost:80/{form}/{genre}?{period}bitrate={bitrate}&page={number}") }
+            else { format!("https://promodj.com/{form}/{genre}?{period}bitrate={bitrate}&page={number}") };
+
         Self { link, client }
     }
 
