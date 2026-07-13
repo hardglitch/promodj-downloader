@@ -1,9 +1,10 @@
-use crate::logic::dsl::Command;
+use crate::logic::dsl::Data;
 use crate::logic::file::DlFile;
+use std::sync::Arc;
 use tempfile::tempdir;
 use tokio::io::AsyncWriteExt;
 use tokio::net::TcpListener;
-use tokio::sync::watch;
+use tokio::sync::{mpsc, RwLock};
 use tokio::task::JoinHandle;
 use tokio::time::Duration;
 
@@ -47,7 +48,8 @@ async fn test_download_via_localhost_integration() {
     tokio::time::sleep(Duration::from_millis(100)).await;
 
     // -------- Client side ----------
-    let (_, rx) = watch::channel(Command::Start);
+    let (_, rx) = mpsc::channel::<Data>(100);
+    let rx = Arc::new(RwLock::new(rx));
     let cur_dir = std::env::current_dir().unwrap();
     let mut dl_file = DlFile::new(TEST_LINK, &cur_dir).unwrap();
     let client = reqwest::Client::new();
