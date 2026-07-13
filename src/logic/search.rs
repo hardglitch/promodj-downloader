@@ -9,7 +9,8 @@ use scraper::{Html, Selector};
 use std::collections::{HashMap, HashSet};
 use std::io::Write;
 use std::sync::Arc;
-use tokio::sync::mpsc::Sender;
+use std::time::Duration;
+use tokio::sync::mpsc::UnboundedSender;
 use tokio::sync::RwLock;
 
 pub struct LinkParams<'a> {
@@ -22,7 +23,7 @@ pub struct LinkParams<'a> {
     pub lossless: bool,
     pub client: reqwest::Client,
     pub db: Option<Database>,
-    pub tx: Arc<RwLock<Sender<Data>>>,
+    pub tx1: Arc<RwLock<UnboundedSender<Data>>>,
 }
 
 pub struct Link;
@@ -53,19 +54,18 @@ impl Link {
                 match page.get_raw_page().await? {
                     Some(raw_page) => {
                         let html = Html::parse_document(&raw_page);
-                        dbg!(&html);
                         Self.get_filtered_links(&html, link_params.lossless)?
                     }
                     None => {
                         let msg = dictionary::errors::no_links_to_filtering(link_params.lang);
                         let data = Data::new(Command::Message, msg);
-                        link_params.tx.read().await.send(data).await?;
+                        link_params.tx1.read().await.send(data)?;
                         return Ok(None);
                     }
                 };
 
             let data = Data::new(Command::Search, page_number % 5);
-            link_params.tx.read().await.send(data).await?;
+            link_params.tx1.read().await.send(data)?;
 
             if !found_links_on_page.is_empty() {
                 found_links.extend(found_links_on_page);
@@ -74,6 +74,9 @@ impl Link {
             else { break; }
 
             page_number += 1;
+
+            // This is for safe scanning
+            tokio::time::sleep(Duration::from_millis(500)).await;
         }
 
         // 2. Remove duplicates
@@ -98,7 +101,7 @@ impl Link {
         if unique_links.is_empty() {
             let msg = dictionary::errors::no_links_to_filtering(link_params.lang);
             let data = Data::new(Command::Message, msg);
-            link_params.tx.read().await.send(data).await?;
+            link_params.tx1.read().await.send(data)?;
             return Ok(None);
         }
 
@@ -118,7 +121,7 @@ impl Link {
         if found_links.is_empty() {
             let msg = dictionary::errors::no_links_to_download(link_params.lang);
             let data = Data::new(Command::Message, msg);
-            link_params.tx.read().await.send(data).await?;
+            link_params.tx1.read().await.send(data)?;
             return Ok(None);
         }
 
