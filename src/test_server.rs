@@ -8,7 +8,7 @@ use crate::log;
 use std::io::Write;
 
 const SERVER_ADDR: &str = "127.0.0.1:80";
-const MUSIC_DIRECTORY: &str = "server";
+const MUSIC_DIRECTORY: &str = r#"K:\_MUSIC\HOUSE\"#;
 const BUFFER_SIZE: usize = 8192;
 
 fn get_files_from_disk() -> Vec<String> {
