@@ -29,6 +29,9 @@ tempfile = "3"
 [build-dependencies]
 embed-resource = "3"
 
+[features]
+test = []
+
 [profile.release]
 strip = true
 opt-level = "s"
