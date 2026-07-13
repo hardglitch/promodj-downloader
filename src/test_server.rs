@@ -127,11 +127,9 @@ async fn handle_connection(mut stream: TcpStream) {
             // 2. Extract the substring starting from the path segment
             let full_path_segment = request.lines().next().unwrap()[path_start_index..]
                 .split_whitespace().next().unwrap();
-            log!("{}", full_path_segment);
 
             // 3. Extract just the filename by splitting on the first '/' after the base path
             let parts: Vec<&str> = full_path_segment.split('/').collect();
-            log!("{:?}", &parts);
 
             if !parts.is_empty() {
                 // The filename is the last element after splitting by '/'
