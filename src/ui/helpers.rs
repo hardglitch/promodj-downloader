@@ -20,11 +20,10 @@ use std::io::Write;
 use std::path::PathBuf;
 use std::str::FromStr;
 use std::sync::Arc;
+use crate::logic::file::download_files;
 
 impl MyApp {
     pub fn new(ctx: &CreationContext) -> Self {
-        // ctx.egui_ctx.set_pixels_per_point(1.0);
-
         let mut fonts = FontDefinitions::default();
         fonts.font_data
             .insert(
@@ -35,18 +34,6 @@ impl MyApp {
             .insert(0, "font".to_owned());
 
         ctx.egui_ctx.set_fonts(fonts);
-
-        // let mut style = (*ctx.egui_ctx.global_style()).clone();
-        // style.text_styles = [
-        //     (TextStyle::Heading, FontId::new(20.0, FontFamily::Proportional)),
-        //     (TextStyle::Body, FontId::new(18.0, FontFamily::Proportional)),
-        //     (TextStyle::Monospace, FontId::new(18.0, FontFamily::Proportional)),
-        //     (TextStyle::Button, FontId::new(20.0, FontFamily::Proportional)),
-        //     (TextStyle::Small, FontId::new(16.0, FontFamily::Proportional)),
-        // ]
-        //     .into();
-        // // ctx.egui_ctx.set_global_style(style);
-        // ctx.egui_ctx.all_styles_mut(move |style| style.text_styles = style.text_styles.clone());
 
         let mut app = Self::default();
 
@@ -337,12 +324,15 @@ impl MyApp {
         let lang = self.lang;
         let file_history = self.file_history;
         let lossless = self.lossless;
+        let overwrite_files = self.overwrite_files;
+        let save_to = self.save_to.clone();
         let client = self.client.clone();
         let db = self.db.clone();
         let message = self.message.clone();
         let message_ = self.message.clone();
         let tx = self.tx1.clone();
         let rx = self.rx1.clone();
+        let rx_ = self.rx1.clone();
 
         tokio::spawn(async move {
             let link_params = LinkParams {
@@ -353,15 +343,20 @@ impl MyApp {
                 lang,
                 file_history,
                 lossless,
-                client,
+                client: client.clone(),
                 db,
                 tx,
             };
             match Link::get_all_links(link_params).await {
-                Ok(links) => {
-                    // start download
-                    dbg!(links);
+                Ok(Some(links)) => {
+                    dbg!(&links);
+                    if let Err(e) = download_files(&links, &save_to, client.clone(), overwrite_files, rx_.clone()).await {
+                        let msg = dictionary::errors::unable_to_download(lang);
+                        *message_.write().await = Some(msg.to_owned());
+                        log!("{e}");
+                    }
                 }
+                Ok(None) => {}
                 Err(e) => {
                     let msg = dictionary::errors::unable_to_connect(lang);
                     *message_.write().await = Some(msg.to_owned());
