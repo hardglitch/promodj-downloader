@@ -1,19 +1,38 @@
+use crate::logic::dsl::{Command, Data};
 use crate::logic::tools;
 use crate::logic::tools::clear_filename;
 use futures_util::StreamExt;
 use std::path::{Path, PathBuf};
-use reqwest::Client;
+use std::sync::Arc;
+use std::time::Duration;
 use tokio::io::AsyncWriteExt;
-use tokio::sync::watch::Receiver;
-use crate::logic::dsl::Command;
+use tokio::sync::mpsc::Receiver;
+use tokio::sync::RwLock;
 
-pub struct DlFile<'a> {
+pub async fn download_files(
+    links: &[String],
+    save_to: &Path,
+    client: reqwest::Client,
+    overwrite_files: bool,
+    rx: Arc<RwLock<Receiver<Data>>>,
+)
+    -> anyhow::Result<()>
+{
+    for link in links.iter() {
+        let mut file = DlFile::new(link, save_to)?;
+        file.download(client.clone(), overwrite_files, rx.clone()).await?;
+    }
+    Ok(())
+}
+
+#[derive(Debug)]
+pub(crate) struct DlFile<'a> {
     link: &'a str,
     name: String,
     path: PathBuf,
 }
 impl<'a> DlFile<'a> {
-    pub fn new(link: &'a str, save_to: &Path) -> anyhow::Result<Self> {
+    pub(crate) fn new(link: &'a str, save_to: &Path) -> anyhow::Result<Self> {
         let name = match link.rsplit('/').next() {
             Some(n) => n,
             None => return Err(anyhow::anyhow!("Bad the file name"))
@@ -23,7 +42,14 @@ impl<'a> DlFile<'a> {
         Ok(Self { link, name, path })
     }
 
-    pub async fn download(&mut self, client: Client, overwrite: bool, control_rx: Receiver<Command>) -> anyhow::Result<()> {
+    pub(crate) async fn download(
+        &mut self,
+        client: reqwest::Client,
+        overwrite: bool,
+        rx: Arc<RwLock<Receiver<Data>>>
+    )
+        -> anyhow::Result<()>
+    {
         if self.path.exists() && !overwrite {
             let new_filename = match tools::new_filename(&self.name) {
                 Some(n) => n,
@@ -34,29 +60,42 @@ impl<'a> DlFile<'a> {
             self.path = new_path;
         }
 
-        let response = client.get(self.link).send().await?;
-        if response.status() != 200 {
+        let response =
+            client
+                .get(self.link)
+                .timeout(Duration::from_secs(u64::MAX))
+                // .header("Connection", "keep-alive")
+                .send()
+                .await?;
+
+        if !response.status().is_success() {
             return Err(anyhow::anyhow!("Bad status = {}", response.status()));
         }
 
         let mut file = tokio::fs::File::create(&self.path).await?;
         let mut stream = response.bytes_stream();
         while let Some(Ok(chunk)) = stream.next().await {
-            match *control_rx.borrow() {
-                Command::Stop => break,
-                Command::Pause => {
-                    loop {
-                        if matches!(*control_rx.borrow(), Command::Start) { break }
-                    }
-                }
-                _ => {}
-            }
+            // if let Some(data) = rx.write().await.recv().await {
+            //     match data.command() {
+            //         Command::Stop => break,
+            //         Command::Pause => {
+            //             loop {
+            //                 if let Some(data) = rx.write().await.recv().await &&
+            //                     matches!(data.command(), Command::Start)
+            //                 { break }
+            //             }
+            //         }
+            //         _ => {}
+            //     }
+            // }
 
             file.write_all(&chunk).await?;
         }
-        if matches!(*control_rx.borrow(), Command::Stop) {
-            tokio::fs::remove_file(&self.path).await?;
-        }
+        // if let Some(data) = rx.write().await.recv().await &&
+        //     matches!(data.command(), Command::Stop)
+        // {
+        //     tokio::fs::remove_file(&self.path).await?;
+        // }
         Ok(())
     }
 }
