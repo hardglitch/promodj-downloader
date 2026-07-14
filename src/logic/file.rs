@@ -1,6 +1,7 @@
-use crate::logic::{tools, Command};
 use crate::logic::tools::clear_filename;
+use crate::logic::{tools, Command};
 use futures_util::StreamExt;
+use percent_encoding::percent_decode;
 use std::path::{Path, PathBuf};
 use std::sync::Arc;
 use std::time::Duration;
@@ -42,10 +43,10 @@ pub(crate) struct DlFile<'a> {
 impl<'a> DlFile<'a> {
     pub(crate) fn new(link: &'a str, save_to: &Path) -> anyhow::Result<Self> {
         let name = match link.rsplit('/').next() {
-            Some(n) => n,
+            Some(n) => percent_decode(n.as_bytes()).decode_utf8()?,
             None => return Err(anyhow::anyhow!("Bad the file name"))
         };
-        let name = clear_filename(name);
+        let name = clear_filename(&name);
         let path = save_to.join(&name);
         Ok(Self { link, name, path })
     }
@@ -86,29 +87,28 @@ impl<'a> DlFile<'a> {
         let mut file = tokio::fs::File::create(&self.path).await?;
         let file_length = response.content_length();
         let mut stream = response.bytes_stream();
-        let mut total_downloaded = 0;
+        let mut downloaded = 0;
         let mut p2 = 0.;
+        let step = 1. / total_files as f32;
 
         while let Some(Ok(chunk)) = stream.next().await {
             file.write_all(&chunk).await?;
-            total_downloaded += chunk.len();
+            downloaded += chunk.len();
 
             // Progress info
             let progress =
-                if let Some(file_length) = file_length && file_length > 0 {
-                    if file_number == 1 {
-                        total_downloaded as f32 / file_length as f32
-                    }
-                    else {
-                        (file_number.saturating_sub(1) as f32 / total_files as f32) * (1. + (total_downloaded as f32 / file_length as f32))
-                    }
+                if let Some(file_length) = file_length && file_length > 0 && total_files > 0 {
+                    let shift = file_number.saturating_sub(1) as f32 / total_files as f32;
+                    let file_progress = downloaded as f32 / file_length as f32;
+
+                    shift + step * file_progress
                 }
-                else { 0. };
+                else { return Err(anyhow::anyhow!("Bad the progress value")) };
 
             let p1 = (progress * 100.0).round();
-            if p1 > p2 || progress == 0. || progress == 100. {
+            if p1 > p2 || progress == 0. {
                 if let Ok(tx) = common_tx.try_read() {
-                    tx.send(Command::Progress(progress))?;
+                    tx.send(Command::Progress(progress, file_number, total_files))?;
                 }
                 p2 = p1;
             }

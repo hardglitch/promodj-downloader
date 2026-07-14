@@ -20,7 +20,6 @@ use std::io::Write;
 use std::path::PathBuf;
 use std::str::FromStr;
 use std::sync::Arc;
-use std::sync::atomic::Ordering;
 use crate::logic::Command;
 
 impl MyApp {
@@ -346,6 +345,7 @@ impl MyApp {
                 db,
                 common_tx: common_tx.clone(),
             };
+
             match Link::get_all_links(link_params).await {
                 Ok(Some(links)) => {
                     let res = download_files(
@@ -362,13 +362,13 @@ impl MyApp {
                         Ok(()) => {
                             let msg = dictionary::ui_messages::all_files_downloaded();
                             if let Ok(tx) = common_tx.try_write() {
-                                let _ = tx.send(Command::Message(msg));
+                                let _ = tx.send(Command::Message(msg.to_owned()));
                             }
                         }
                         Err(e) => {
                             let msg = dictionary::errors::unable_to_download(lang);
                             if let Ok(tx) = common_tx.try_write() {
-                                let _ = tx.send(Command::Message(msg));
+                                let _ = tx.send(Command::Message(msg.to_owned()));
                             }
                             log!("{e}");
                         }
@@ -378,7 +378,7 @@ impl MyApp {
                 Err(e) => {
                     let msg = dictionary::errors::unable_to_connect(lang);
                     if let Ok(tx) = common_tx.try_write() {
-                        let _ = tx.send(Command::Message(msg));
+                        let _ = tx.send(Command::Message(msg.to_owned()));
                     }
                     log!("{e}");
                 }
@@ -393,12 +393,14 @@ impl MyApp {
             match cmd {
                 Command::Message(msg) => {
                     self.show_progress = false;
-                    ui.request_repaint();
                     self.message = Some(msg);
+                    ui.request_repaint();
                 }
-                Command::Progress(progress) => {
+                Command::Progress(progress, cur, total) => {
                     self.show_progress = true;
                     self.progress = progress;
+                    self.current = cur;
+                    self.total = total;
                     ui.request_repaint();
                 }
                 _ => {}
@@ -429,8 +431,8 @@ impl MyApp {
         );
 
         // --- 2. Draw the Foreground (The Label on top) ---
-        let text_color = Color32::WHITE;
-        let text = format!("{:.1}%", self.progress * 100.);
+        let text_color = Color32::LIGHT_GRAY;
+        let text = format!("{:.0}% ( {} / {} )", self.progress * 100., self.current, self.total);
         let text_pos = Pos2::new(rect.center().x, rect.center().y);
 
         ui.painter().text(

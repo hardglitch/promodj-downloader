@@ -11,7 +11,6 @@ pub enum Command {
     Start,
     Pause,
     Stop,
-    Message(&'static str),
-    Progress(f32),
-    Search(usize),
+    Message(String),
+    Progress(f32, usize, usize),
 }

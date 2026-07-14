@@ -11,6 +11,7 @@ use std::sync::Arc;
 use std::time::Duration;
 use tokio::sync::mpsc::UnboundedSender;
 use tokio::sync::RwLock;
+use tokio::task::JoinHandle;
 use crate::logic::Command;
 
 pub struct LinkParams<'a> {
@@ -29,6 +30,7 @@ pub struct LinkParams<'a> {
 pub struct Link;
 impl Link {
     pub async fn get_all_links<'a>(link_params: LinkParams<'a>) -> anyhow::Result<Option<Vec<String>>> {
+        let searching = UiActionHandle::run(UiAction::Searching, link_params.lang, link_params.common_tx.clone());
 
         // 1. Get the link set
         let mut found_links: HashSet<String> = HashSet::new();
@@ -58,12 +60,10 @@ impl Link {
                     }
                     None => {
                         let msg = dictionary::errors::no_links_to_filtering(link_params.lang);
-                        link_params.common_tx.read().await.send(Command::Message(msg))?;
+                        link_params.common_tx.read().await.send(Command::Message(msg.to_owned()))?;
                         return Ok(None);
                     }
                 };
-
-            link_params.common_tx.read().await.send(Command::Search(page_number % 5))?;
 
             if !found_links_on_page.is_empty() {
                 found_links.extend(found_links_on_page);
@@ -77,11 +77,14 @@ impl Link {
             tokio::time::sleep(Duration::from_millis(500)).await;
         }
 
+        drop(searching);
+        let analysis = UiActionHandle::run(UiAction::Analysis, link_params.lang, link_params.common_tx.clone());
+
         // 2. Remove duplicates
         //    Convert {"1.wav", "1.flac", "2.flac", "2.wav"} to {'1.flac', '2.flac'}
         let mut unique_links: HashMap<&str, &str> = HashMap::new();
         for link in &found_links {
-            let mut split = link.rsplitn(2, '.');
+            let mut split = link.rsplitn(2, "%2E");
             if let Some(ext) = split.next() &&
                let Some(name) = split.next()
             {
@@ -98,7 +101,7 @@ impl Link {
 
         if unique_links.is_empty() {
             let msg = dictionary::errors::no_links_to_filtering(link_params.lang);
-            link_params.common_tx.read().await.send(Command::Message(msg))?;
+            link_params.common_tx.read().await.send(Command::Message(msg.to_owned()))?;
             return Ok(None);
         }
 
@@ -108,7 +111,7 @@ impl Link {
         }
 
         let mut found_links = unique_links.iter()
-            .map(|(name, ext)| { format!("{name}.{ext}") })
+            .map(|(name, ext)| { format!("{name}%2E{ext}") })
             .collect::<Vec<String>>();
 
         // 4. Truncate found links
@@ -117,10 +120,11 @@ impl Link {
 
         if found_links.is_empty() {
             let msg = dictionary::errors::no_links_to_download(link_params.lang);
-            link_params.common_tx.read().await.send(Command::Message(msg))?;
+            link_params.common_tx.read().await.send(Command::Message(msg.to_owned()))?;
             return Ok(None);
         }
 
+        drop(analysis);
         Ok(Some(found_links))
     }
 
@@ -141,16 +145,53 @@ impl Link {
             if let Some(href) = element.value().attr("href") {
                 let format_matches = formats.iter().any(|f| href.ends_with(f));
 
-                let source_condition =
-                    if cfg!(feature = "test") { true }            // Always pass if 'test' is on
-                    else { href.find("/source/") > Some(1) }; // Check required if 'test' is off
+                let is_source =
+                    if cfg!(feature = "test") { true }
+                    else { href.find("/source/").is_some() };
 
-                if format_matches && source_condition {
+                if format_matches && is_source {
                     links.insert(href.to_owned());
                 }
             }
         }
         Ok(links)
+    }
+}
+
+#[derive(Copy, Clone)]
+enum UiAction {
+    Searching,
+    Analysis,
+}
+struct UiActionHandle {
+    handle: JoinHandle<()>,
+}
+impl UiActionHandle {
+    fn run(action: UiAction, lang: Lang, common_tx: Arc<RwLock<UnboundedSender<Command>>>) -> Self {
+        let handle = Self::handle(action, lang, common_tx);
+        Self { handle }
+    }
+    fn handle(action: UiAction, lang: Lang, common_tx: Arc<RwLock<UnboundedSender<Command>>>) -> JoinHandle<()> {
+        tokio::spawn(async move {
+            let mut i = 1;
+            let action_ = match action {
+                UiAction::Searching => dictionary::ui_messages::searching(lang),
+                UiAction::Analysis => dictionary::ui_messages::analysis(lang),
+            };
+
+            loop {
+                let dots = ".".repeat(i % 5);
+                let msg = format!("{dots}{action_}{dots}");
+                let _ = common_tx.read().await.send(Command::Message(msg));
+                tokio::time::sleep(Duration::from_millis(100)).await;
+                i += 1;
+            }
+        })
+    }
+}
+impl Drop for UiActionHandle {
+    fn drop(&mut self) {
+        self.handle.abort();
     }
 }
 

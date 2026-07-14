@@ -38,9 +38,11 @@ pub struct MyApp {
     qr_pos: Pos2,
 
     // Progress bar/Messages
-    message: Option<&'static str>,
+    message: Option<String>,
     progress: f32,
     show_progress: bool,
+    current: usize,
+    total: usize,
 
     // System
     pub db: Option<Database>,
@@ -50,9 +52,6 @@ pub struct MyApp {
     pub control_rx: Arc<RwLock<UnboundedReceiver<Command>>>,
     is_canceled: bool,
     pub client: reqwest::Client,
-
-    total_files: usize,
-    downloaded_files: usize,
 }
 impl Default for MyApp {
     fn default() -> Self {
@@ -82,6 +81,8 @@ impl Default for MyApp {
             message: None,
             progress: 0.0,
             show_progress: false,
+            current: 0,
+            total: 0,
 
             db: None,
             common_tx: Arc::new(RwLock::new(tx1)),
@@ -90,9 +91,6 @@ impl Default for MyApp {
             control_rx: Arc::new(RwLock::new(rx2)),
             is_canceled: false,
             client: reqwest::Client::new(),
-
-            total_files: 0,
-            downloaded_files: 0,
         }
     }
 }

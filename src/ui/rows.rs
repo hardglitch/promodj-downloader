@@ -100,7 +100,7 @@ impl MyApp {
                 if self.show_progress {
                     self.progress_bar(ui);
                 }
-                else if let Some(msg) = self.message {
+                else if let Some(msg) = &self.message {
                    ui.label(msg);
                 }
             });
