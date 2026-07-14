@@ -1,11 +1,11 @@
 use crate::data::consts::{LOSSLESS_COMPRESSED_FORMATS, LOSSLESS_UNCOMPRESSED_FORMATS, LOSSY_FORMATS};
 use crate::utils::logging::Log;
-use regex::Regex;
 use std::path::Path;
 use tokio::io::{AsyncReadExt, AsyncWriteExt};
 use tokio::net::{TcpListener, TcpStream};
 use crate::log;
 use std::io::Write;
+use percent_encoding::{percent_decode, percent_encode, NON_ALPHANUMERIC};
 
 const SERVER_ADDR: &str = "127.0.0.1:80";
 const MUSIC_DIRECTORY: &str = r#"K:\_MUSIC\HOUSE"#;
@@ -30,51 +30,6 @@ fn get_files_from_disk() -> Vec<String> {
     file_list
 }
 
-fn manual_url_encode(input: &str) -> String {
-    let mut result = String::new();
-    for c in input.chars() {
-        match c {
-            ' ' => result.push_str("%20"), // Space
-            '/' => result.push_str("%2F"), // Forward slash (path separator)
-            '?' => result.push_str("%3F"), // Question mark (query start)
-            '&' => result.push_str("%26"), // Ampersand (used for parameters)
-            '=' => result.push_str("%3D"), // Equals sign
-            '+' => result.push_str("%2B"), // Plus sign (often used for spaces in query strings)
-            '\'' => result.push_str("%27"),
-            '#' => result.push_str("%23"), // Hash/Fragment identifier
-            '<' => result.push_str("%3C"), // Less than
-            '>' => result.push_str("%3E"), // Greater than
-
-            _ => {
-                    result.push(c);
-            }
-        }
-    }
-    result
-}
-
-fn manual_url_decode(encoded_input: &str) -> String {
-    // Regex to find sequences like %XX where XX are hex digits.
-    let re = Regex::new(r"%([0-9A-Fa-f]{2})").unwrap();
-
-    re.replace_all(encoded_input, |caps: &regex::Captures| -> String {
-        let hex_code = caps.get(1).unwrap().as_str();
-
-        // 1. Attempt to decode the hex code into a byte, then cast to a char.
-        let decoded_char = match u8::from_str_radix(hex_code, 16) {
-            Ok(byte) => byte as char,
-            Err(_) => {
-                // 2. Fallback: If decoding fails, return the first character of the original match.
-                caps[0].chars().next().unwrap()
-            }
-        };
-
-        // 3. Convert the resulting char into a String
-        decoded_char.to_string()
-    })
-        .into_owned()
-}
-
 fn generate_html_manifest(file_list: &[String]) -> String {
     let mut html = String::new();
 
@@ -86,7 +41,7 @@ fn generate_html_manifest(file_list: &[String]) -> String {
     // Generate a list item for every file found
     for filename in file_list {
         // Construct the direct download URL using the MUSIC_DIRECTORY
-        let encoded_filename = manual_url_encode(filename);
+        let encoded_filename = percent_encode(filename.as_bytes(), NON_ALPHANUMERIC);
         let direct_link = format!("http://localhost:80/mixes/house/{}", encoded_filename);
 
         // Create the HTML link
@@ -116,7 +71,7 @@ async fn handle_connection(mut stream: TcpStream) {
 
         // --- LOGIC 1: Check for Direct File Download Request (Has a trailing filename) ---
         if request.starts_with("GET") && request.contains("/mixes/house") &&
-           extensions().iter().any(|&ext| request.contains(&format!(".{ext}")))
+           extensions().iter().any(|&ext| request.contains(&format!("%2E{ext}")))
         {
             // We need to isolate the path part: /mixes/house/FILENAME.ext
 
@@ -176,39 +131,34 @@ async fn handle_connection(mut stream: TcpStream) {
     }
 }
 
-async fn handle_file_download(mut stream: TcpStream, requested_path: &str) {
-    let requested_path = manual_url_decode(requested_path);
-    let full_path = Path::new(MUSIC_DIRECTORY).join(&requested_path);
+async fn handle_file_download(mut stream: TcpStream, filename: &str) {
+    let filename = percent_decode(filename.as_bytes()).decode_utf8().unwrap();
+    let full_path = Path::new(MUSIC_DIRECTORY).join(filename.to_string());
+    log!("{}", full_path.to_str().unwrap());
     let mut file = tokio::fs::File::open(full_path).await.unwrap();
     let mut chunk = [0u8; BUFFER_SIZE];
-    // let mut total_bytes_written = 0;
 
     // 1. Get the file size
     let file_size = file.metadata().await.unwrap().len();
     // 2. Construct the correct HTTP response
-    let response = format!(
+    let header = format!(
         "HTTP/1.1 200 OK\r\nContent-Type: audio/flac\r\nContent-Length: {}\r\nConnection: close\r\n\r\n",
         file_size
     );
     // 3. Send the header
-    if let Err(e) = stream.write_all(response.as_bytes()).await {
+    if let Err(e) = stream.write_all(header.as_bytes()).await {
         log!("[SERVER] Error writing response header: {}", e);
         return;
     }
 
     loop {
         match file.read(&mut chunk).await {
-            Ok(0) => {
-                // log!("EOF");
-                break;
-            }
+            Ok(0) => { break; } // EOF
             Ok(n) => {
                 if let Err(e) = stream.write_all(&chunk[..n]).await {
                     log!("[SERVER] Error writing chunk to stream: {e}");
                     break;
                 }
-                // total_bytes_written += n;
-                // log!("write {n} bytes ({total_bytes_written})");
             }
             Err(e) => {
                 log!("[SERVER] Error reading file chunk: {e}");
@@ -245,9 +195,9 @@ async fn start_test_media_server() {
 fn encode_decode_test() {
     Log::init("server.log", 10 * 1024 * 1024 * 1024);
     let s = "Yorgy Simenon - I'm Staying [Mix 001] (promodj.com).flac";
-    let encoded = manual_url_encode(s);
-    assert_eq!(r#"Yorgy%20Simenon%20-%20I%27m%20Staying%20[Mix%20001]%20(promodj.com).flac"#, encoded);
+    let encoded = percent_encode(s.as_bytes(), NON_ALPHANUMERIC).to_string();
+    assert_eq!(r#"Yorgy%20Simenon%20%2D%20I%27m%20Staying%20%5BMix%20001%5D%20%28promodj%2Ecom%29%2Eflac"#, encoded);
 
-    let decoded = manual_url_decode(&encoded);
+    let decoded = percent_decode(encoded.as_bytes()).decode_utf8().unwrap();
     assert_eq!(s, decoded);
 }

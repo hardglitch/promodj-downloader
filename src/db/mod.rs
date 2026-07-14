@@ -5,6 +5,7 @@ use crate::log;
 use sqlx_core::pool::PoolConnection;
 use std::collections::HashMap;
 use std::io::Write;
+use percent_encoding::{percent_encode, NON_ALPHANUMERIC};
 use crate::data::consts::{LOSSLESS_COMPRESSED_FORMATS, LOSSLESS_UNCOMPRESSED_FORMATS, LOSSY_FORMATS};
 
 impl Database {
@@ -20,7 +21,7 @@ impl Database {
     pub async fn write_file_history(&self, link: &str) -> Option<()> {
         let tx = async move |mut conn: PoolConnection<DBType>| -> Result<(), sqlx::Error> {
             let link = link
-                .rsplit_once('.')
+                .rsplit_once("%2E")
                 .map(|(_ext, name)| name)
                 .unwrap_or_default()
                 .chars()
@@ -62,7 +63,10 @@ impl Database {
                             { Some(name_) }
                             else { None }
                         })
-                        .any(|name_| &name_ == name)
+                        .any(|name_| {
+                            let encoded_name_ = percent_encode(name_.as_bytes(), NON_ALPHANUMERIC).to_string();
+                            &encoded_name_ == name
+                        })
                 })
             );
             Ok(())
