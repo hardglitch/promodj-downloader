@@ -3,7 +3,7 @@ use crate::data::dictionary;
 use crate::data::dictionary::{hints, inscriptions, Lang};
 use crate::db::dbcore::{Database, DB_NAME};
 use crate::log;
-use crate::logic::dsl::Command;
+use crate::logic::file::download_files;
 use crate::logic::search::{Link, LinkParams};
 use crate::ui::MyApp;
 use configparser::ini::Ini;
@@ -13,14 +13,15 @@ use eframe::epaint::textures::TextureOptions;
 use eframe::epaint::{Color32, ColorImage, FontFamily};
 use eframe::CreationContext;
 use egui::load::SizedTexture;
-use egui::{CursorIcon, Image, Label, Layout, RichText, Sense, Ui, Vec2, Window};
+use egui::{CursorIcon, FontId, Image, Label, Layout, Pos2, RichText, Sense, Ui, Vec2, Window};
 use image::{GenericImageView, ImageBuffer};
 use image::{ImageError, ImageResult, Rgba};
 use std::io::Write;
 use std::path::PathBuf;
 use std::str::FromStr;
 use std::sync::Arc;
-use crate::logic::file::download_files;
+use std::sync::atomic::Ordering;
+use crate::logic::Command;
 
 impl MyApp {
     pub fn new(ctx: &CreationContext) -> Self {
@@ -314,6 +315,7 @@ impl MyApp {
 
     pub(super) fn download(&mut self) {
         // 1. Change name and status of Download button
+
         // 2. Create Pause button
 
         // 3. Main logic
@@ -328,11 +330,8 @@ impl MyApp {
         let save_to = self.save_to.clone();
         let client = self.client.clone();
         let db = self.db.clone();
-        let message = self.message.clone();
-        let message_ = self.message.clone();
-        let tx = self.tx1.clone();
-        let rx = self.rx1.clone();
-        let rx_ = self.rx1.clone();
+        let common_tx = self.common_tx.clone();
+        let control_rx = self.control_rx.clone();
 
         tokio::spawn(async move {
             let link_params = LinkParams {
@@ -345,33 +344,102 @@ impl MyApp {
                 lossless,
                 client: client.clone(),
                 db,
-                tx,
+                common_tx: common_tx.clone(),
             };
             match Link::get_all_links(link_params).await {
                 Ok(Some(links)) => {
-                    dbg!(&links);
-                    if let Err(e) = download_files(&links, &save_to, client.clone(), overwrite_files, rx_.clone()).await {
-                        let msg = dictionary::errors::unable_to_download(lang);
-                        *message_.write().await = Some(msg.to_owned());
-                        log!("{e}");
+                    let res = download_files(
+                            &links,
+                            &save_to,
+                            client.clone(),
+                            overwrite_files,
+                            common_tx.clone(),
+                            control_rx.clone(),
+                          ).await;
+
+
+                    match res {
+                        Ok(()) => {
+                            let msg = dictionary::ui_messages::all_files_downloaded();
+                            if let Ok(tx) = common_tx.try_write() {
+                                let _ = tx.send(Command::Message(msg));
+                            }
+                        }
+                        Err(e) => {
+                            let msg = dictionary::errors::unable_to_download(lang);
+                            if let Ok(tx) = common_tx.try_write() {
+                                let _ = tx.send(Command::Message(msg));
+                            }
+                            log!("{e}");
+                        }
                     }
                 }
                 Ok(None) => {}
                 Err(e) => {
                     let msg = dictionary::errors::unable_to_connect(lang);
-                    *message_.write().await = Some(msg.to_owned());
+                    if let Ok(tx) = common_tx.try_write() {
+                        let _ = tx.send(Command::Message(msg));
+                    }
                     log!("{e}");
                 }
             }
         });
+    }
 
-        if let Ok(mut data) = rx.try_write() &&
-            let Ok(data) = data.try_recv() &&
-            matches!(data.command(), Command::Message) &&
-            let Some(data_msg) = data.payload::<String>() &&
-            let Ok(mut ui_msg) = message.clone().try_write()
+    pub(super) fn common_receiver(&mut self, ui: &mut Ui) {
+        if let Ok(mut cmd) = self.common_rx.try_write() &&
+           let Ok(cmd) = cmd.try_recv()
         {
-            *ui_msg = Some(data_msg);
+            match cmd {
+                Command::Message(msg) => {
+                    self.show_progress = false;
+                    ui.request_repaint();
+                    self.message = Some(msg);
+                }
+                Command::Progress(progress) => {
+                    self.show_progress = true;
+                    self.progress = progress;
+                    ui.request_repaint();
+                }
+                _ => {}
+            }
         }
+    }
+
+
+    pub(crate) fn progress_bar(&mut self, ui: &mut Ui) {
+
+        // --- 1. Define the area where the UI elements will live ---
+        let rect = ui.available_rect_before_wrap();
+        let bar_height = 18.0; // Fixed height for the visual bar
+        let bar_width = rect.width();
+
+        // Calculate the actual width of the filled portion
+        let progress_width = bar_width * self.progress;
+
+        // Draw the filled portion of the bar on top of the background
+        let filled_rect = Rect::from_min_size(
+            Pos2::new(rect.left(), rect.top()),
+            egui::vec2(progress_width, bar_height),
+        );
+        ui.painter().rect_filled(
+            filled_rect,
+            3.0,
+            Color32::from_rgb(0, 92, 128),
+        );
+
+        // --- 2. Draw the Foreground (The Label on top) ---
+        let text_color = Color32::WHITE;
+        let text = format!("{:.1}%", self.progress * 100.);
+        let text_pos = Pos2::new(rect.center().x, rect.center().y);
+
+        ui.painter().text(
+            text_pos,
+            egui::Align2::CENTER_CENTER,
+            text,
+            FontId::default(),
+            text_color,
+        );
+        ui.request_repaint();
     }
 }

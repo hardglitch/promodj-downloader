@@ -1,4 +1,3 @@
-use crate::logic::dsl::Data;
 use crate::logic::file::DlFile;
 use std::sync::Arc;
 use tempfile::tempdir;
@@ -7,6 +6,7 @@ use tokio::net::TcpListener;
 use tokio::sync::{mpsc, RwLock};
 use tokio::task::JoinHandle;
 use tokio::time::Duration;
+use crate::logic::Command;
 
 const TEST_FILENAME: &str = "some_file.ext";
 const TEST_LINK: &str = "http://localhost/some_file.ext";
@@ -48,12 +48,16 @@ async fn test_download_via_localhost_integration() {
     tokio::time::sleep(Duration::from_millis(100)).await;
 
     // -------- Client side ----------
-    let (_, rx) = mpsc::channel::<Data>(100);
-    let rx = Arc::new(RwLock::new(rx));
+    let (_, rx) = mpsc::unbounded_channel::<Command>();
+    let control_rx = Arc::new(RwLock::new(rx));
+
+    let (tx, _) = mpsc::unbounded_channel::<Command>();
+    let common_tx = Arc::new(RwLock::new(tx));
+
     let cur_dir = std::env::current_dir().unwrap();
     let mut dl_file = DlFile::new(TEST_LINK, &cur_dir).unwrap();
     let client = reqwest::Client::new();
-    let res = dl_file.download(client, true, rx.clone()).await;
+    let res = dl_file.download(client, true, common_tx.clone(), control_rx.clone(), 1, 1).await;
 
     assert!(res.is_ok(), "Download failed. Check if the server is running correctly.");
 

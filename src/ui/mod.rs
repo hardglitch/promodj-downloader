@@ -4,13 +4,13 @@ mod rows;
 use crate::data::consts::{FORMS, GENRES};
 use crate::data::dictionary::Lang;
 use crate::db::dbcore::Database;
-use crate::logic::dsl::Data;
 use eframe::{App, Frame};
 use egui::{Pos2, TextureHandle, Ui};
 use std::path::PathBuf;
 use std::sync::Arc;
-use tokio::sync::mpsc::{Receiver, Sender};
+use tokio::sync::mpsc::{UnboundedReceiver, UnboundedSender};
 use tokio::sync::RwLock;
+use crate::logic::Command;
 
 #[derive(Clone)]
 pub struct MyApp {
@@ -38,14 +38,16 @@ pub struct MyApp {
     qr_pos: Pos2,
 
     // Progress bar/Messages
-    message: Arc<RwLock<Option<String>>>,
+    message: Option<&'static str>,
+    progress: f32,
+    show_progress: bool,
 
     // System
     pub db: Option<Database>,
-    pub tx1: Arc<RwLock<Sender<Data>>>,
-    pub rx1: Arc<RwLock<Receiver<Data>>>,
-    pub tx2: Arc<RwLock<Sender<Data>>>,
-    pub rx2: Arc<RwLock<Receiver<Data>>>,
+    pub common_tx: Arc<RwLock<UnboundedSender<Command>>>,
+    pub common_rx: Arc<RwLock<UnboundedReceiver<Command>>>,
+    pub control_tx: Arc<RwLock<UnboundedSender<Command>>>,
+    pub control_rx: Arc<RwLock<UnboundedReceiver<Command>>>,
     is_canceled: bool,
     pub client: reqwest::Client,
 
@@ -54,8 +56,8 @@ pub struct MyApp {
 }
 impl Default for MyApp {
     fn default() -> Self {
-        let (tx1, rx1) = tokio::sync::mpsc::channel::<Data>(100);
-        let (tx2, rx2) = tokio::sync::mpsc::channel::<Data>(100);
+        let (tx1, rx1) = tokio::sync::mpsc::unbounded_channel::<Command>();
+        let (tx2, rx2) = tokio::sync::mpsc::unbounded_channel::<Command>();
 
         Self {
             genre: GENRES[231].0, // Techno
@@ -77,13 +79,15 @@ impl Default for MyApp {
             show_qr: false,
             qr_pos: Default::default(),
 
-            message: Arc::default(),
+            message: None,
+            progress: 0.0,
+            show_progress: false,
 
             db: None,
-            tx1: Arc::new(RwLock::new(tx1)),
-            rx1: Arc::new(RwLock::new(rx1)),
-            tx2: Arc::new(RwLock::new(tx2)),
-            rx2: Arc::new(RwLock::new(rx2)),
+            common_tx: Arc::new(RwLock::new(tx1)),
+            common_rx: Arc::new(RwLock::new(rx1)),
+            control_tx: Arc::new(RwLock::new(tx2)),
+            control_rx: Arc::new(RwLock::new(rx2)),
             is_canceled: false,
             client: reqwest::Client::new(),
 
@@ -122,6 +126,8 @@ impl App for MyApp {
 
             // --- The Bottom Row ---
             self.bottom_row(ui);
+
+            self.common_receiver(ui);
         });
     }
 }

@@ -3,7 +3,6 @@ use crate::data::dictionary;
 use crate::data::dictionary::Lang;
 use crate::db::dbcore::Database;
 use crate::log;
-use crate::logic::dsl::{Command, Data};
 use anyhow::anyhow;
 use scraper::{Html, Selector};
 use std::collections::{HashMap, HashSet};
@@ -12,6 +11,7 @@ use std::sync::Arc;
 use std::time::Duration;
 use tokio::sync::mpsc::UnboundedSender;
 use tokio::sync::RwLock;
+use crate::logic::Command;
 
 pub struct LinkParams<'a> {
     pub form: &'a str,
@@ -23,7 +23,7 @@ pub struct LinkParams<'a> {
     pub lossless: bool,
     pub client: reqwest::Client,
     pub db: Option<Database>,
-    pub tx1: Arc<RwLock<UnboundedSender<Data>>>,
+    pub common_tx: Arc<RwLock<UnboundedSender<Command>>>,
 }
 
 pub struct Link;
@@ -58,14 +58,12 @@ impl Link {
                     }
                     None => {
                         let msg = dictionary::errors::no_links_to_filtering(link_params.lang);
-                        let data = Data::new(Command::Message, msg);
-                        link_params.tx1.read().await.send(data)?;
+                        link_params.common_tx.read().await.send(Command::Message(msg))?;
                         return Ok(None);
                     }
                 };
 
-            let data = Data::new(Command::Search, page_number % 5);
-            link_params.tx1.read().await.send(data)?;
+            link_params.common_tx.read().await.send(Command::Search(page_number % 5))?;
 
             if !found_links_on_page.is_empty() {
                 found_links.extend(found_links_on_page);
@@ -100,8 +98,7 @@ impl Link {
 
         if unique_links.is_empty() {
             let msg = dictionary::errors::no_links_to_filtering(link_params.lang);
-            let data = Data::new(Command::Message, msg);
-            link_params.tx1.read().await.send(data)?;
+            link_params.common_tx.read().await.send(Command::Message(msg))?;
             return Ok(None);
         }
 
@@ -120,8 +117,7 @@ impl Link {
 
         if found_links.is_empty() {
             let msg = dictionary::errors::no_links_to_download(link_params.lang);
-            let data = Data::new(Command::Message, msg);
-            link_params.tx1.read().await.send(data)?;
+            link_params.common_tx.read().await.send(Command::Message(msg))?;
             return Ok(None);
         }
 

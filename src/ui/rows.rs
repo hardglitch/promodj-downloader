@@ -96,13 +96,14 @@ impl MyApp {
 
     pub(super) fn progress_bar_row(&mut self, ui: &mut Ui) {
         ui.horizontal(|ui| {
-            if let Ok(msg) = self.message.clone().try_read() &&
-               let Some(msg) = &*msg
-            {
-                ui.with_layout(egui::Layout::centered_and_justified(egui::Direction::TopDown), |ui| {
-                    ui.label(msg);
-                });
-            }
+            ui.with_layout(Layout::centered_and_justified(egui::Direction::TopDown), |ui| {
+                if self.show_progress {
+                    self.progress_bar(ui);
+                }
+                else if let Some(msg) = self.message {
+                   ui.label(msg);
+                }
+            });
         });
     }
 
