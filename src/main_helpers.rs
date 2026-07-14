@@ -13,7 +13,7 @@ pub(super) fn load_embedded_icon(bytes: &[u8]) -> Result<IconData, image::ImageE
 
 pub(super) fn window_title() -> String {
     let (days, lang) = last_download_days();
-    let template = inscriptions::promodj_music_downloader_extended(lang);
+    let template = inscriptions::promodj_downloader_extended(lang);
     template.replace('_', &days.to_string())
 }
 

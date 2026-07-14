@@ -234,9 +234,9 @@ pub mod ui_messages {
 pub mod inscriptions {
     use super::Lang;
 
-    pub const fn promodj_music_downloader_extended<'a>(lang: Lang) -> &'a str {
+    pub const fn promodj_downloader_extended<'a>(lang: Lang) -> &'a str {
         match lang {
-            Lang::En => "PromoDJ Music Downloader - Last download was _ days ago",
+            Lang::En => "PromoDJ Downloader - Last download was _ days ago",
             Lang::Ru => "PromoDJ Загрузчик - Последняя загрузка была _ дней назад",
             Lang::Uk => "PromoDJ Завантажувач - Останнє завантаження було _ днів тому",
         }
