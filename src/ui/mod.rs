@@ -2,7 +2,7 @@ mod helpers;
 mod rows;
 
 use crate::data::consts::{FORMS, GENRES};
-use crate::data::dictionary::Lang;
+use crate::data::dictionary;
 use crate::db::dbcore::Database;
 use eframe::{App, Frame};
 use egui::{Pos2, TextureHandle, Ui};
@@ -26,7 +26,7 @@ pub struct MyApp {
     pub lossless: bool,
 
     // Options
-    pub lang: Lang,
+    pub lang: dictionary::Lang,
     save_to: PathBuf,
     save_tx: Option<TextureHandle>,
     last_download: usize,
@@ -44,13 +44,16 @@ pub struct MyApp {
     current: usize,
     total: usize,
 
+    // Download
+    dl_button_name: &'static str,
+    dl_started: bool,
+
     // System
     pub db: Option<Database>,
     pub common_tx: Arc<RwLock<UnboundedSender<Command>>>,
     pub common_rx: Arc<RwLock<UnboundedReceiver<Command>>>,
     pub control_tx: Arc<RwLock<UnboundedSender<Command>>>,
     pub control_rx: Arc<RwLock<UnboundedReceiver<Command>>>,
-    is_canceled: bool,
     pub client: reqwest::Client,
 }
 impl Default for MyApp {
@@ -68,7 +71,7 @@ impl Default for MyApp {
             period: true,
             lossless: true,
 
-            lang: Lang::En,
+            lang: dictionary::Lang::En,
             save_to: PathBuf::from("Downloaded music"),
             save_tx: None,
             last_download: 0,
@@ -84,12 +87,14 @@ impl Default for MyApp {
             current: 0,
             total: 0,
 
+            dl_button_name: dictionary::inscriptions::download(dictionary::Lang::En),
+            dl_started: false,
+
             db: None,
             common_tx: Arc::new(RwLock::new(tx1)),
             common_rx: Arc::new(RwLock::new(rx1)),
             control_tx: Arc::new(RwLock::new(tx2)),
             control_rx: Arc::new(RwLock::new(rx2)),
-            is_canceled: false,
             client: reqwest::Client::new(),
         }
     }
@@ -97,32 +102,14 @@ impl Default for MyApp {
 impl App for MyApp {
     fn ui(&mut self, ui: &mut Ui, _frame: &mut Frame) {
         egui::CentralPanel::default().show(ui, |ui| {
-
-            // --- Main Row
             self.main_row(ui);
-
-            // --- GAP ---
             ui.add_space(10.);
-
-            // --- Toggles Row ---
             self.toggles_row(ui);
-
-            // --- GAP ---
             ui.add_space(20.);
-
-            // --- Safe File Row ---
             self.save_file_row(ui);
-
-            // --- GAP ---
             ui.add_space(20.);
-
-            // --- Progress Bar/Errors Row ---
             self.progress_bar_row(ui);
-
-            // --- Buttons
             self.buttons(ui);
-
-            // --- The Bottom Row ---
             self.bottom_row(ui);
 
             self.common_receiver(ui);

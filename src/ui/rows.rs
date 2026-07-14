@@ -109,7 +109,7 @@ impl MyApp {
 
     pub(super) fn buttons(&mut self, ui: &mut Ui) {
         ui.with_layout(Layout::right_to_left(Align::Max), |ui| {
-            if ui.button(egui::RichText::new(inscriptions::download(self.lang)).size(24.0))
+            if ui.button(egui::RichText::new(self.dl_button_name).size(24.0))
                 .on_hover_cursor(CursorIcon::PointingHand)
                 .clicked()
             {

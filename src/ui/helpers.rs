@@ -314,6 +314,15 @@ impl MyApp {
 
     pub(super) fn download(&mut self) {
         // 1. Change name and status of Download button
+        if self.dl_started &&
+           let Ok(tx) = self.control_tx.try_read()
+        {
+            let _ = tx.send(Command::Stop);
+            return
+        }
+
+        self.dl_button_name = inscriptions::cancel(self.lang);
+        self.dl_started = true;
 
         // 2. Create Pause button
 
@@ -346,6 +355,12 @@ impl MyApp {
                 common_tx: common_tx.clone(),
             };
 
+            let send = |msg: &str| {
+                if let Ok(tx) = common_tx.try_write() {
+                    let _ = tx.send(Command::Message(msg.to_owned()));
+                }
+            };
+
             match Link::get_all_links(link_params).await {
                 Ok(Some(links)) => {
                     let res = download_files(
@@ -357,19 +372,19 @@ impl MyApp {
                             control_rx.clone(),
                           ).await;
 
-
                     match res {
-                        Ok(()) => {
-                            let msg = dictionary::ui_messages::all_files_downloaded();
-                            if let Ok(tx) = common_tx.try_write() {
-                                let _ = tx.send(Command::Message(msg.to_owned()));
-                            }
+                        Ok(Some(Command::Stop)) => {
+                            let msg = dictionary::ui_messages::download_canceled(lang);
+                            send(msg);
                         }
+                        Ok(None) => {
+                            let msg = dictionary::ui_messages::all_files_downloaded();
+                            send(msg);
+                        }
+                        Ok(_) => {}
                         Err(e) => {
                             let msg = dictionary::errors::unable_to_download(lang);
-                            if let Ok(tx) = common_tx.try_write() {
-                                let _ = tx.send(Command::Message(msg.to_owned()));
-                            }
+                            send(msg);
                             log!("{e}");
                         }
                     }
@@ -377,11 +392,13 @@ impl MyApp {
                 Ok(None) => {}
                 Err(e) => {
                     let msg = dictionary::errors::unable_to_connect(lang);
-                    if let Ok(tx) = common_tx.try_write() {
-                        let _ = tx.send(Command::Message(msg.to_owned()));
-                    }
+                    send(msg);
                     log!("{e}");
                 }
+            }
+
+            if let Ok(tx) = common_tx.try_write() {
+                let _ = tx.send(Command::Stop);
             }
         });
     }
@@ -402,6 +419,10 @@ impl MyApp {
                     self.current = cur;
                     self.total = total;
                     ui.request_repaint();
+                }
+                Command::Stop => {
+                    self.dl_button_name = inscriptions::download(self.lang);
+                    self.dl_started = false;
                 }
                 _ => {}
             }

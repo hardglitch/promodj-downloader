@@ -17,21 +17,24 @@ pub async fn download_files(
     common_tx: Arc<RwLock<UnboundedSender<Command>>>,
     control_rx: Arc<RwLock<UnboundedReceiver<Command>>>,
 )
-    -> anyhow::Result<()>
+    -> anyhow::Result<Option<Command>>
 {
     let total_links = links.len();
     for (link_number, link) in links.iter().enumerate() {
         let mut file = DlFile::new(link, save_to)?;
-        file.download(
-            client.clone(),
-            overwrite_files,
-            common_tx.clone(),
-            control_rx.clone(),
-            link_number + 1,
-            total_links
-        ).await?;
+        let res =
+            file.download(
+                client.clone(),
+                overwrite_files,
+                common_tx.clone(),
+                control_rx.clone(),
+                link_number + 1,
+                total_links
+            ).await?;
+
+        if matches!(res, Some(Command::Stop)) { return Ok(res) }
     }
-    Ok(())
+    Ok(None)
 }
 
 #[derive(Debug)]
@@ -60,7 +63,7 @@ impl<'a> DlFile<'a> {
         file_number: usize,
         total_files: usize,
     )
-        -> anyhow::Result<()>
+        -> anyhow::Result<Option<Command>>
     {
         if self.path.exists() && !overwrite {
             let new_filename = match tools::new_filename(&self.name) {
@@ -90,6 +93,7 @@ impl<'a> DlFile<'a> {
         let mut downloaded = 0;
         let mut p2 = 0.;
         let step = 1. / total_files as f32;
+        let is_canceled = &mut false;
 
         while let Some(Ok(chunk)) = stream.next().await {
             file.write_all(&chunk).await?;
@@ -102,8 +106,7 @@ impl<'a> DlFile<'a> {
                     let file_progress = downloaded as f32 / file_length as f32;
 
                     shift + step * file_progress
-                }
-                else { return Err(anyhow::anyhow!("Bad the progress value")) };
+                } else { return Err(anyhow::anyhow!("Bad the progress value")) };
 
             let p1 = (progress * 100.0).round();
             if p1 > p2 || progress == 0. {
@@ -114,29 +117,30 @@ impl<'a> DlFile<'a> {
             }
 
             // Control
-            // if let Ok(mut rx) = control_rx.try_write() &&
-            //    let Ok(data) = rx.recv()
-            // {
-            //     match data.command() {
-            //         Command::Stop => break,
-            //         Command::Pause => {
-            //             loop {
-            //                 if let Some(data) = rx1.write().await.recv().await &&
-            //                     matches!(data.command(), Command::Start)
-            //                 { break }
-            //             }
-            //         }
-            //         _ => {}
-            //     }
-            // }
+            if let Ok(mut rx) = control_rx.try_write() &&
+               let Ok(cmd) = rx.try_recv()
+            {
+                match cmd {
+                    Command::Stop => {
+                        *is_canceled = true;
+                        break
+                    },
+                    Command::Pause => {
+                        loop {
+                            if let Some(cmd) = control_rx.write().await.recv().await &&
+                                matches!(cmd, Command::Start)
+                            { break }
+                        }
+                    }
+                    _ => {}
+                }
+            }
         }
 
-        // if let Some(data) = rx1.write().await.recv() &&
-        //    matches!(data.command(), Command::Stop)
-        // {
-        //     tokio::fs::remove_file(&self.path).await?;
-        // }
-
-        Ok(())
+        if *is_canceled {
+            tokio::fs::remove_file(&self.path).await?;
+            return Ok(Some(Command::Stop))
+        }
+        Ok(None)
     }
 }

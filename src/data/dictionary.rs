@@ -230,6 +230,13 @@ pub mod ui_messages {
             Lang::Uk => "аналіз",
         }
     }
+    pub const fn download_canceled<'a>(lang: Lang) -> &'a str {
+        match lang {
+            Lang::En => "Download canceled",
+            Lang::Ru => "Скачивание отменено",
+            Lang::Uk => "Завантаження скасовано",
+        }
+    }
 }
 pub mod inscriptions {
     use super::Lang;
