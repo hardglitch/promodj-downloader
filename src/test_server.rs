@@ -71,7 +71,7 @@ async fn handle_connection(mut stream: TcpStream) {
 
         // --- LOGIC 1: Check for Direct File Download Request (Has a trailing filename) ---
         if request.starts_with("GET") && request.contains("/mixes/house") &&
-           extensions().iter().any(|&ext| request.contains(&format!("%2E{ext}")))
+           extensions().iter().any(|&ext| request.contains(&format!(".{ext}")))
         {
             // We need to isolate the path part: /mixes/house/FILENAME.ext
 
