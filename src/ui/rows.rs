@@ -112,7 +112,7 @@ impl MyApp {
             let legend = self.dl_button_name;
             let button_text = egui::RichText::new(legend(self.lang)).size(24.0);
             let button = egui::Button::new(button_text)
-                .min_size(egui::vec2(200., 30.));;
+                .min_size(egui::vec2(200., 30.));
 
             if ui.add(button)
                 .on_hover_cursor(CursorIcon::PointingHand)
