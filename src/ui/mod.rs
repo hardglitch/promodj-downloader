@@ -10,6 +10,7 @@ use std::path::PathBuf;
 use std::sync::Arc;
 use tokio::sync::mpsc::{UnboundedReceiver, UnboundedSender};
 use tokio::sync::RwLock;
+use crate::data::dictionary::Lang;
 use crate::logic::Command;
 
 #[derive(Clone)]
@@ -45,7 +46,7 @@ pub struct MyApp {
     total: usize,
 
     // Download
-    dl_button_name: &'static str,
+    dl_button_name: fn(Lang) -> &'static str,
     dl_started: bool,
 
     // System
@@ -87,7 +88,7 @@ impl Default for MyApp {
             current: 0,
             total: 0,
 
-            dl_button_name: dictionary::inscriptions::download(dictionary::Lang::En),
+            dl_button_name: dictionary::inscriptions::download,
             dl_started: false,
 
             db: None,

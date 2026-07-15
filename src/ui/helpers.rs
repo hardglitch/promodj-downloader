@@ -321,7 +321,7 @@ impl MyApp {
             return
         }
 
-        self.dl_button_name = inscriptions::cancel(self.lang);
+        self.dl_button_name = inscriptions::cancel;
         self.dl_started = true;
 
         // 2. Create Pause button
@@ -421,7 +421,7 @@ impl MyApp {
                     ui.request_repaint();
                 }
                 Command::Stop => {
-                    self.dl_button_name = inscriptions::download(self.lang);
+                    self.dl_button_name = inscriptions::download;
                     self.dl_started = false;
                 }
                 _ => {}
