@@ -56,7 +56,7 @@ impl MyApp {
         let mut config = Ini::new();
 
         config.set("default", "LastDownload", Some(self.last_download.to_string()));
-        config.set("default", "Language", Some(self.lang.to_string()));
+        config.set("default", "Language", Some(self.lang.encode().to_owned()));
 
         let s = self.save_to.clone().into_string().ok();
         config.set("default", "DownloadDirectory", s);

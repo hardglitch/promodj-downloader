@@ -4,8 +4,8 @@ use strum::Display;
 pub enum Lang { #[default]En, Ru, Uk }
 impl Lang {
     #[inline]
-    pub fn encode<'a>(lang: Lang) -> &'a str {
-        match lang {
+    pub fn encode<'a>(self) -> &'a str {
+        match self {
             Lang::En => "en",
             Lang::Ru => "ru",
             Lang::Uk => "uk",
@@ -25,13 +25,6 @@ impl Lang {
 pub mod errors {
     use super::Lang;
 
-    pub const fn no_suitable_parameter<'a>(lang: Lang) -> &'a str {
-        match lang {
-            Lang::En => "No suitable parameter",
-            Lang::Ru => "Нет подходящего параметра",
-            Lang::Uk => "Немає відповідного параметра",
-        }
-    }
     pub const fn no_links_to_filtering<'a>(lang: Lang) -> &'a str {
         match lang {
             Lang::En => "No Links to filtering",
@@ -46,20 +39,6 @@ pub mod errors {
             Lang::Uk => "Неможливо завантажити",
         }
     }
-    pub const fn no_link_to_extract_a_name<'a>(lang: Lang) -> &'a str {
-        match lang {
-            Lang::En => "No Link to extract a name",
-            Lang::Ru => "Нет ссылки для извлечения имени",
-            Lang::Uk => "Немає посилання для отримання імені",
-        }
-    }
-    pub const fn no_link_to_download<'a>(lang: Lang) -> &'a str {
-        match lang {
-            Lang::En => "No Link to download",
-            Lang::Ru => "Нет ссылки для скачивания",
-            Lang::Uk => "Немає посилання для завантаження",
-        }
-    }
     pub const fn no_links_to_download<'a>(lang: Lang) -> &'a str {
         match lang {
             Lang::En => "No Links to download",
@@ -72,62 +51,6 @@ pub mod errors {
             Lang::En => "Unable to connect",
             Lang::Ru => "Невозможно подключиться",
             Lang::Uk => "Не може підключитися",
-        }
-    }
-    pub const fn something_went_wrong<'a>(lang: Lang) -> &'a str {
-        match lang {
-            Lang::En => "Something went wrong",
-            Lang::Ru => "Что-то пошло не так",
-            Lang::Uk => "Щось пішло не так",
-        }
-    }
-    pub const fn no_date<'a>(lang: Lang) -> &'a str {
-        match lang {
-            Lang::En => "No Date",
-            Lang::Ru => "Нет даты",
-            Lang::Uk => "Немає дати",
-        }
-    }
-    pub const fn no_link_to_write<'a>(lang: Lang) -> &'a str {
-        match lang {
-            Lang::En => "No Link to write to file",
-            Lang::Ru => "Нет ссылки для записи в файл",
-            Lang::Uk => "Немає посилання для запису у файл",
-        }
-    }
-    pub const fn unable_to_download_a_file<'a>(lang: Lang) -> &'a str {
-        match lang {
-            Lang::En => "Unable to download a file",
-            Lang::Ru => "Невозможно скачать файл",
-            Lang::Uk => "Неможливо завантажити файл",
-        }
-    }
-    pub const fn wrong_path<'a>(lang: Lang) -> &'a str {
-        match lang {
-            Lang::En => "Wrong Path",
-            Lang::Ru => "Неправильный путь",
-            Lang::Uk => "Неправильний шлях",
-        }
-    }
-    pub const fn wrong_file_name<'a>(lang: Lang) -> &'a str {
-        match lang {
-            Lang::En => "Wrong File Name",
-            Lang::Ru => "Неправильное имя файла",
-            Lang::Uk => "Неправильна назва файлу",
-        }
-    }
-    pub const fn link_is_not_a_str_type<'a>(lang: Lang) -> &'a str {
-        match lang {
-            Lang::En => "Link is not a 'str' type",
-            Lang::Ru => "Ссылка не типа 'str'",
-            Lang::Uk => "Посилання не має типу 'str'",
-        }
-    }
-    pub const fn security_threat<'a>(lang: Lang) -> &'a str {
-        match lang {
-            Lang::En => "Security Threat",
-            Lang::Ru => "Угроза безопасности",
-            Lang::Uk => "Загроза безпеці",
         }
     }
 }
