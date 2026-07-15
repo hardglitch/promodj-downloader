@@ -9,6 +9,7 @@ use std::collections::{HashMap, HashSet};
 use std::io::Write;
 use std::sync::Arc;
 use std::time::Duration;
+use percent_encoding::percent_decode_str;
 use tokio::sync::mpsc::UnboundedSender;
 use tokio::sync::RwLock;
 use tokio::task::JoinHandle;
@@ -84,10 +85,7 @@ impl Link {
         //    Convert {"1.wav", "1.flac", "2.flac", "2.wav"} to {'1.flac', '2.flac'}
         let mut unique_links: HashMap<&str, &str> = HashMap::new();
         for link in &found_links {
-            let mut split = link.rsplitn(2, "%2E");
-            if let Some(ext) = split.next() &&
-               let Some(name) = split.next()
-            {
+            if let Some((name, ext)) = link.rsplit_once('.') {
                 unique_links
                     .entry(name)
                     .and_modify(|ext_| {
@@ -111,7 +109,7 @@ impl Link {
         }
 
         let mut found_links = unique_links.iter()
-            .map(|(name, ext)| { format!("{name}%2E{ext}") })
+            .map(|(name, ext)| { format!("{name}.{ext}") })
             .collect::<Vec<String>>();
 
         // 4. Truncate found links
@@ -150,7 +148,8 @@ impl Link {
                     else { href.find("/source/").is_some() };
 
                 if format_matches && is_source {
-                    links.insert(href.to_owned());
+                    let decoded_href = percent_decode_str(href).decode_utf8()?;
+                    links.insert(decoded_href.to_string());
                 }
             }
         }

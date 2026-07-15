@@ -1,7 +1,6 @@
 use crate::logic::tools::clear_filename;
 use crate::logic::{tools, Command};
 use futures_util::StreamExt;
-use percent_encoding::percent_decode;
 use std::path::{Path, PathBuf};
 use std::sync::Arc;
 use std::time::Duration;
@@ -45,11 +44,11 @@ pub(crate) struct DlFile<'a> {
 }
 impl<'a> DlFile<'a> {
     pub(crate) fn new(link: &'a str, save_to: &Path) -> anyhow::Result<Self> {
-        let name = match link.rsplit('/').next() {
-            Some(n) => percent_decode(n.as_bytes()).decode_utf8()?,
-            None => return Err(anyhow::anyhow!("Bad the file name"))
+        let (_base_url, name) = match link.rsplit_once('/') {
+            Some(n) => n,
+            None => return Err(anyhow::anyhow!("Bad link"))
         };
-        let name = clear_filename(&name);
+        let name = clear_filename(name);
         let path = save_to.join(&name);
         Ok(Self { link, name, path })
     }
@@ -75,11 +74,27 @@ impl<'a> DlFile<'a> {
             self.path = new_path;
         }
 
+        #[allow(unused_mut)]
+        let mut link = self.link.to_owned();
+
+        #[cfg(feature = "test")]
+        {
+            let (base_url, name) = match self.link.rsplit_once('/') {
+                Some(n) => n,
+                None => return Err(anyhow::anyhow!("Bad link"))
+            };
+            let (name, ext) = match name.rsplit_once('.') {
+                Some(n) => n,
+                None => return Err(anyhow::anyhow!("Bad the file name"))
+            };
+            let encoded_name = percent_encoding::utf8_percent_encode(name, percent_encoding::NON_ALPHANUMERIC);
+            link = format!("{base_url}/{encoded_name}.{ext}");
+        }
+
         let response =
             client
-                .get(self.link)
+                .get(link)
                 .timeout(Duration::from_secs(u64::MAX))
-                // .header("Connection", "keep-alive")
                 .send()
                 .await?;
 

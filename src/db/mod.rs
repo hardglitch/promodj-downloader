@@ -5,7 +5,6 @@ use crate::log;
 use sqlx_core::pool::PoolConnection;
 use std::collections::HashMap;
 use std::io::Write;
-use percent_encoding::{percent_encode, NON_ALPHANUMERIC};
 use crate::data::consts::{LOSSLESS_COMPRESSED_FORMATS, LOSSLESS_UNCOMPRESSED_FORMATS, LOSSY_FORMATS};
 
 impl Database {
@@ -21,8 +20,8 @@ impl Database {
     pub async fn write_file_history(&self, link: &str) -> Option<()> {
         let tx = async move |mut conn: PoolConnection<DBType>| -> Result<(), sqlx::Error> {
             let link = link
-                .rsplit_once("%2E")
-                .map(|(_ext, name)| name)
+                .rsplit_once('.')
+                .map(|(name, _ext)| name)
                 .unwrap_or_default()
                 .chars()
                 .take(1000)
@@ -51,12 +50,12 @@ impl Database {
             let _ = unique_links.extract_if(|name, _ext|
                 records.contains(&name.to_string())
                     ||
-                // for old databases created the app version <= 1.5.7
+                // for old databases created by the App <= v1.5.7
                 records.iter().any(|rec| {
                     rec
                         .rsplit_once('.')
                         .into_iter()
-                        .filter_map(|(ext_, name_)| {
+                        .filter_map(|(name_, ext_)| {
                             if LOSSLESS_UNCOMPRESSED_FORMATS.contains(&ext_) ||
                                LOSSLESS_COMPRESSED_FORMATS.contains(&ext_) ||
                                LOSSY_FORMATS.contains(&ext_)
@@ -64,8 +63,7 @@ impl Database {
                             else { None }
                         })
                         .any(|name_| {
-                            let encoded_name_ = percent_encode(name_.as_bytes(), NON_ALPHANUMERIC).to_string();
-                            &encoded_name_ == name
+                            &name_ == name
                         })
                 })
             );
