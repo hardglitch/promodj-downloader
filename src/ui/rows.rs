@@ -48,40 +48,66 @@ impl MyApp {
 
     pub(super) fn toggles_row(&mut self, ui: &mut Ui) {
         ui.horizontal(|ui| {
-            ui.add_space(100.);
+            ui.add_space(50.);
 
-            if ui.toggle_value(&mut self.file_history, inscriptions::file_history(self.lang))
-                .on_hover_cursor(CursorIcon::PointingHand)
-                .on_hover_text(hints::file_history(self.lang))
-                .clicked()
-            {
-                self.save_settings();
-            }
+            ui.vertical(|ui| {
+                ui.set_width(60.);
+                ui.with_layout(Layout::centered_and_justified(egui::Direction::TopDown), |ui| {
+                        if ui
+                        .toggle_value(&mut self.file_history, inscriptions::file_history(self.lang))
+                        .on_hover_cursor(CursorIcon::PointingHand)
+                        .on_hover_text(hints::file_history(self.lang))
+                        .clicked()
+                    {
+                        self.save_settings();
+                    }
+                });
+            });
 
-            if !self.file_history { self.overwrite_files = false; }
-            if ui.toggle_value(&mut self.overwrite_files, inscriptions::overwrite_files(self.lang))
-                .on_hover_cursor(CursorIcon::PointingHand)
-                .on_hover_text(hints::overwrite_files(self.lang))
-                .clicked()
-            {
-                self.save_settings();
-            }
+            ui.vertical(|ui| {
+                ui.set_width(155.);
+                ui.with_layout(Layout::centered_and_justified(egui::Direction::TopDown), |ui| {
+                    if self.file_history { self.overwrite_files = true; }
+                    if ui
+                        .toggle_value(&mut self.overwrite_files, inscriptions::overwrite_files(self.lang))
+                        .on_hover_cursor(CursorIcon::PointingHand)
+                        .on_hover_text(hints::overwrite_files(self.lang))
+                        .clicked()
+                            &&
+                        !self.file_history
+                    {
+                        self.save_settings();
+                    }
+                });
+            });
 
-            if ui.toggle_value(&mut self.period, inscriptions::period(self.lang))
-                .on_hover_cursor(CursorIcon::PointingHand)
-                .on_hover_text(hints::period(self.lang))
-                .clicked()
-            {
-                self.save_settings();
-            }
+            ui.vertical(|ui| {
+                ui.set_width(55.);
+                ui.with_layout(Layout::centered_and_justified(egui::Direction::TopDown), |ui| {
+                    if ui
+                        .toggle_value(&mut self.period, inscriptions::period(self.lang))
+                        .on_hover_cursor(CursorIcon::PointingHand)
+                        .on_hover_text(hints::period(self.lang))
+                        .clicked()
+                    {
+                        self.save_settings();
+                    }
+                });
+            });
 
-            if ui.toggle_value(&mut self.lossless, inscriptions::lossless(self.lang))
-                .on_hover_cursor(CursorIcon::PointingHand)
-                .on_hover_text(hints::lossless(self.lang))
-                .clicked()
-            {
-                self.save_settings();
-            }
+            ui.vertical(|ui| {
+                ui.set_width(80.);
+                ui.with_layout(Layout::centered_and_justified(egui::Direction::TopDown), |ui| {
+                    if ui
+                        .toggle_value(&mut self.lossless, inscriptions::lossless(self.lang))
+                        .on_hover_cursor(CursorIcon::PointingHand)
+                        .on_hover_text(hints::lossless(self.lang))
+                        .clicked()
+                    {
+                        self.save_settings();
+                    }
+                });
+            });
         });
     }
 

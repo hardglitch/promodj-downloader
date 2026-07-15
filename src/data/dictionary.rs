@@ -194,16 +194,16 @@ pub mod inscriptions {
     }
     pub const fn file_history<'a>(lang: Lang) -> &'a str {
         match lang {
-            Lang::En => "File History",
+            Lang::En => "History",
             Lang::Ru => "История",
-            Lang::Uk => "Iсторія",
+            Lang::Uk => "Історія",
         }
     }
     pub const fn overwrite_files<'a>(lang: Lang) -> &'a str {
         match lang {
             Lang::En => "Overwrite files",
-            Lang::Ru => "Переписывать",
-            Lang::Uk => "Переписувати",
+            Lang::Ru => "Перезаписывать файлы",
+            Lang::Uk => "Перезаписувати файли",
         }
     }
     pub const fn save_to<'a>(lang: Lang) -> &'a str {

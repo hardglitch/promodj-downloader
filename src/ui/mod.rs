@@ -71,7 +71,7 @@ impl Default for MyApp {
             quantity: 1,
 
             file_history: true,
-            overwrite_files: false,
+            overwrite_files: true,
             period: true,
             lossless: true,
 
