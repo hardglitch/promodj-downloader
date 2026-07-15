@@ -5,16 +5,15 @@ mod data;
 mod utils;
 mod ui;
 mod logic;
-mod main_helpers;
 mod db;
 #[cfg(test)]
 mod test_server;
 
-use crate::ui::MyApp;
+use ui::MyApp;
 use eframe::{egui::ViewportBuilder, NativeOptions};
 use std::io::Write;
-use crate::main_helpers::{load_embedded_icon, window_title};
-use crate::utils::logging::Log;
+use utils::main_helpers::load_embedded_icon;
+use utils::logging::Log;
 
 #[tokio::main]
 async fn main() {
@@ -38,7 +37,7 @@ async fn main() {
 
     if let Err(e) =
         eframe::run_native(
-            window_title().as_str(),
+            "",
             options,
             Box::new(|ctx| Ok(Box::new(MyApp::new(ctx)))),
         )

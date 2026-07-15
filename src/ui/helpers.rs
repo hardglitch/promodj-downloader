@@ -20,6 +20,7 @@ use std::io::Write;
 use std::path::PathBuf;
 use std::str::FromStr;
 use std::sync::Arc;
+use std::time::UNIX_EPOCH;
 use crate::logic::Command;
 
 impl MyApp {
@@ -46,6 +47,7 @@ impl MyApp {
             }
         });
         app.db = rx.try_recv().ok();
+        app.last_download_days = Self::last_download_days().unwrap_or_default();
 
         app.load_settings();
         if let Err(e) = app.load_textures(ctx) { log!("Load textures: {e}") }
@@ -201,6 +203,22 @@ impl MyApp {
         Ok(color_image)
     }
 
+    pub(super) fn last_download_days() -> Option<u64> {
+        let mut config = Ini::new();
+        if config.load("settings.ini").is_ok() &&
+            let Ok(Some(last_ts)) = config.getuint("default", "LastDownload") &&
+            let Ok(ts) = std::time::SystemTime::now().duration_since(UNIX_EPOCH)
+        {
+            let days = ts.as_secs().saturating_sub(last_ts).saturating_div(3600 * 24);
+            return Some(days)
+        }
+        None
+    }
+    pub(super) fn window_title(&mut self) -> String {
+        let template = inscriptions::window_title(self.lang);
+        template.replace('_', &self.last_download_days.to_string())
+    }
+
     pub(super) fn lang_switcher(&mut self, ui: &mut Ui) {
         let lang_text = RichText::new(self.lang.to_string().to_lowercase());
         let lang_btn = Label::new(lang_text);
@@ -317,35 +335,40 @@ impl MyApp {
         }
     }
 
-    pub(super) fn pause(&mut self, ui: &mut Ui) {
-        let tx_handle = if self.dl_paused { &self.play_tx } else { &self.pause_tx };
-        if let Some(tx_id) = tx_handle {
-            let img = Image::new(SizedTexture::new(tx_id.id(), vec2(30., 30.)));
-            let hint =
-                if self.dl_paused { hints::resume(self.lang) }
-                else { hints::pause(self.lang) };
+    pub(super) fn progress_bar(&mut self, ui: &mut Ui) {
 
-            let text = RichText::new(hint);
+        // --- 1. Define the area where the UI elements will live ---
+        let rect = ui.available_rect_before_wrap();
+        let bar_height = 18.0; // Fixed height for the visual bar
+        let bar_width = rect.width();
 
-            if ui
-                .add(img.sense(Sense::click()))
-                .on_hover_cursor(CursorIcon::PointingHand)
-                .on_hover_text(text)
-                .clicked()
-                    &&
-                let Ok(tx) = self.control_tx.try_read()
-            {
-                if self.dl_paused {
-                    let _ = tx.send(Command::Start);
-                    self.dl_paused = false;
-                }
-                else {
-                    let _ = tx.send(Command::Pause);
-                    self.dl_paused = true;
-                }
-                ui.request_repaint();
-            }
-        }
+        // Calculate the actual width of the filled portion
+        let progress_width = bar_width * self.progress;
+
+        // Draw the filled portion of the bar on top of the background
+        let filled_rect = Rect::from_min_size(
+            Pos2::new(rect.left(), rect.top()),
+            egui::vec2(progress_width, bar_height),
+        );
+        ui.painter().rect_filled(
+            filled_rect,
+            3.0,
+            Color32::from_rgb(0, 92, 128),
+        );
+
+        // --- 2. Draw the Foreground (The Label on top) ---
+        let text_color = Color32::LIGHT_GRAY;
+        let text = format!("{:.0}% ( {} / {} )", self.progress * 100., self.current, self.total);
+        let text_pos = Pos2::new(rect.center().x, rect.center().y);
+
+        ui.painter().text(
+            text_pos,
+            egui::Align2::CENTER_CENTER,
+            text,
+            FontId::default(),
+            text_color,
+        );
+        ui.request_repaint();
     }
 
     pub(super) fn download(&mut self) {
@@ -437,6 +460,36 @@ impl MyApp {
             }
         });
     }
+    pub(super) fn pause(&mut self, ui: &mut Ui) {
+        let tx_handle = if self.dl_paused { &self.play_tx } else { &self.pause_tx };
+        if let Some(tx_id) = tx_handle {
+            let img = Image::new(SizedTexture::new(tx_id.id(), vec2(30., 30.)));
+            let hint =
+                if self.dl_paused { hints::resume(self.lang) }
+                else { hints::pause(self.lang) };
+
+            let text = RichText::new(hint);
+
+            if ui
+                .add(img.sense(Sense::click()))
+                .on_hover_cursor(CursorIcon::PointingHand)
+                .on_hover_text(text)
+                .clicked()
+                &&
+                let Ok(tx) = self.control_tx.try_read()
+            {
+                if self.dl_paused {
+                    let _ = tx.send(Command::Start);
+                    self.dl_paused = false;
+                }
+                else {
+                    let _ = tx.send(Command::Pause);
+                    self.dl_paused = true;
+                }
+                ui.request_repaint();
+            }
+        }
+    }
 
     pub(super) fn common_receiver(&mut self, ui: &mut Ui) {
         if let Ok(mut cmd) = self.common_rx.try_write() &&
@@ -462,41 +515,5 @@ impl MyApp {
                 _ => {}
             }
         }
-    }
-
-    pub(super) fn progress_bar(&mut self, ui: &mut Ui) {
-
-        // --- 1. Define the area where the UI elements will live ---
-        let rect = ui.available_rect_before_wrap();
-        let bar_height = 18.0; // Fixed height for the visual bar
-        let bar_width = rect.width();
-
-        // Calculate the actual width of the filled portion
-        let progress_width = bar_width * self.progress;
-
-        // Draw the filled portion of the bar on top of the background
-        let filled_rect = Rect::from_min_size(
-            Pos2::new(rect.left(), rect.top()),
-            egui::vec2(progress_width, bar_height),
-        );
-        ui.painter().rect_filled(
-            filled_rect,
-            3.0,
-            Color32::from_rgb(0, 92, 128),
-        );
-
-        // --- 2. Draw the Foreground (The Label on top) ---
-        let text_color = Color32::LIGHT_GRAY;
-        let text = format!("{:.0}% ( {} / {} )", self.progress * 100., self.current, self.total);
-        let text_pos = Pos2::new(rect.center().x, rect.center().y);
-
-        ui.painter().text(
-            text_pos,
-            egui::Align2::CENTER_CENTER,
-            text,
-            FontId::default(),
-            text_color,
-        );
-        ui.request_repaint();
     }
 }

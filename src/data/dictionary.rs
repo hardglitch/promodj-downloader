@@ -171,11 +171,11 @@ pub mod ui_messages {
 pub mod inscriptions {
     use super::Lang;
 
-    pub const fn promodj_downloader_extended<'a>(lang: Lang) -> &'a str {
+    pub const fn window_title<'a>(lang: Lang) -> &'a str {
         match lang {
-            Lang::En => "PromoDJ Downloader - Last download was _ days ago",
-            Lang::Ru => "PromoDJ Загрузчик - Последняя загрузка была _ дней назад",
-            Lang::Uk => "PromoDJ Завантажувач - Останнє завантаження було _ днів тому",
+            Lang::En => "Last download was _ days ago",
+            Lang::Ru => "Последняя загрузка была _ дней назад",
+            Lang::Uk => "Останнє завантаження було _ днів тому",
         }
     }
     pub const fn period<'a>(lang: Lang) -> &'a str {

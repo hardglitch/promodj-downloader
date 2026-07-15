@@ -15,6 +15,8 @@ use crate::logic::Command;
 
 #[derive(Clone)]
 pub struct MyApp {
+    last_download_days: u64,
+
     // Dropdowns
     pub genre: &'static str,
     pub form: &'static str,
@@ -66,6 +68,8 @@ impl Default for MyApp {
         let (tx2, rx2) = tokio::sync::mpsc::unbounded_channel::<Command>();
 
         Self {
+            last_download_days: 0,
+
             genre: GENRES[231].0, // Techno
             form: FORMS[0],       // mixes
             quantity: 1,
@@ -107,7 +111,11 @@ impl Default for MyApp {
     }
 }
 impl App for MyApp {
-    fn ui(&mut self, ui: &mut Ui, _frame: &mut Frame) {
+    fn ui(&mut self, ui: &mut Ui, frame: &mut Frame) {
+        if let Some(window) = frame.winit_window() {
+            window.set_title(&self.window_title());
+        }
+
         egui::CentralPanel::default().show(ui, |ui| {
             self.main_row(ui);
             ui.add_space(10.);
