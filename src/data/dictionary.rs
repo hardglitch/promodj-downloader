@@ -204,6 +204,13 @@ pub mod hints {
             Lang::Uk => "Пауза",
         }
     }
+    pub const fn resume<'a>(lang: Lang) -> &'a str {
+        match lang {
+            Lang::En => "Resume",
+            Lang::Ru => "Продолжить",
+            Lang::Uk => "Продовжити",
+        }
+    }
 }
 pub mod ui_messages {
     use super::Lang;

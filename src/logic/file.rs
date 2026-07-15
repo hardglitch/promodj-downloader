@@ -136,20 +136,22 @@ impl<'a> DlFile<'a> {
                let Ok(cmd) = rx.try_recv()
             {
                 match cmd {
-                    Command::Stop => {
-                        *is_canceled = true;
-                        break
-                    },
+                    Command::Stop => { *is_canceled = true; },
                     Command::Pause => {
                         loop {
-                            if let Some(cmd) = control_rx.write().await.recv().await &&
-                                matches!(cmd, Command::Start)
-                            { break }
+                            if let Ok(cmd) = rx.try_recv() {
+                                match cmd {
+                                    Command::Start => { break }
+                                    Command::Stop => { *is_canceled = true; break },
+                                    _ => {}
+                                }
+                            }
                         }
                     }
                     _ => {}
                 }
             }
+            if *is_canceled { break }
         }
 
         if *is_canceled {

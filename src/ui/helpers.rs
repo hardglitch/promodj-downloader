@@ -153,11 +153,19 @@ impl MyApp {
         self.qr_eth = Some(th);
 
         let img = include_bytes!("../../assets/save.ico");
-        let image = image::load_from_memory(img)?.into_rgba8();
-        let size = [image.width() as usize, image.height() as usize];
-        let color_image = ColorImage::from_rgba_unmultiplied(size, &image.into_raw());
+        let color_image = Self::process_image(img)?;
         let th = ctx.egui_ctx.load_texture("save_tx", color_image, TextureOptions::default());
         self.save_tx = Some(th);
+
+        let img = include_bytes!("../../assets/pause.ico");
+        let color_image = Self::process_image(img)?;
+        let th = ctx.egui_ctx.load_texture("pause_tx", color_image, TextureOptions::default());
+        self.pause_tx = Some(th);
+
+        let img = include_bytes!("../../assets/play.ico");
+        let color_image = Self::process_image(img)?;
+        let th = ctx.egui_ctx.load_texture("play_tx", color_image, TextureOptions::default());
+        self.play_tx = Some(th);
 
         Ok(())
     }
@@ -220,66 +228,63 @@ impl MyApp {
             .on_hover_text(hints::donate(self.lang));
 
         if donate.clicked() &&
-            let Some(pos) = ui.pointer_interact_pos()
+           let Some(pos) = ui.pointer_interact_pos()
         {
             self.qr_pos.x = pos.x + 10.0;
             self.qr_pos.y = pos.y - 650.0;
             self.show_qr = !self.show_qr;
         }
     }
-
     pub(super) fn donate_popup(&mut self, ui: &mut Ui) {
-        if self.show_qr {
-            let resp = Window::new("donate")
-                .fixed_size(Vec2::new(320., 160.0))
-                .title_bar(false)
-                .resizable(false)
-                .fixed_pos(self.qr_pos)
-                .show(ui, |ui| {
-                    ui.with_layout(Layout::left_to_right(Align::Center), |ui| {
-                        if let Some(th_btc) = &self.qr_btc &&
-                           let Some(th_eth) = &self.qr_eth
-                        {
-                            ui.vertical(|ui| {
-                                let img = Image::new(SizedTexture::new(th_btc.id(), vec2(150.0, 150.0)));
-                                let wallet = "bc1qfyt84p8t85pg6597882cr7p04ank2263t7asa6";
-                                self.copy_to_clipboard(img, wallet, ui);
+        let resp = Window::new("donate")
+            .fixed_size(Vec2::new(320., 160.0))
+            .title_bar(false)
+            .resizable(false)
+            .fixed_pos(self.qr_pos)
+            .show(ui, |ui| {
+                ui.with_layout(Layout::left_to_right(Align::Center), |ui| {
+                    if let Some(th_btc) = &self.qr_btc &&
+                       let Some(th_eth) = &self.qr_eth
+                    {
+                        ui.vertical(|ui| {
+                            let img = Image::new(SizedTexture::new(th_btc.id(), vec2(150.0, 150.0)));
+                            let wallet = "bc1qfyt84p8t85pg6597882cr7p04ank2263t7asa6";
+                            self.copy_to_clipboard(img, wallet, ui);
 
-                                ui.horizontal(|ui| {
-                                    ui.add_space(60.);
-                                    ui.colored_label(Color32::ORANGE, "bitcoin");
-                                });
+                            ui.horizontal(|ui| {
+                                ui.add_space(60.);
+                                ui.colored_label(Color32::ORANGE, "bitcoin");
                             });
+                        });
 
-                            ui.vertical(|ui| {
-                                let img = Image::new(SizedTexture::new(th_eth.id(), vec2(150.0, 150.0)));
-                                let wallet = "0x1991F455084DfF493AC13D0473d92b47A80403F9";
-                                self.copy_to_clipboard(img, wallet, ui);
+                        ui.vertical(|ui| {
+                            let img = Image::new(SizedTexture::new(th_eth.id(), vec2(150.0, 150.0)));
+                            let wallet = "0x1991F455084DfF493AC13D0473d92b47A80403F9";
+                            self.copy_to_clipboard(img, wallet, ui);
 
-                                ui.horizontal(|ui| {
-                                    ui.add_space(50.);
-                                    ui.colored_label(Color32::from_rgb(157,167,218), "ethereum");
-                                });
+                            ui.horizontal(|ui| {
+                                ui.add_space(50.);
+                                ui.colored_label(Color32::from_rgb(157,167,218), "ethereum");
                             });
-                        }
-                    });
-                });
-
-            // Hide the popup window if mouse was clicked from outside
-            ui.input(|i| {
-                if i.pointer.any_click() &&
-                    let Some(click_pos) = i.pointer.interact_pos() &&
-                    let Some(r) = resp
-                {
-                    let r_left_top = r.response.rect.left_top() + vec2(-15.0, 20.0);
-                    let r_size = r.response.rect.size() + vec2(15.0, 20.0);
-                    let popup_rect = Rect::from_min_size(r_left_top, r_size);
-                    if !popup_rect.contains(click_pos) {
-                        self.show_qr = false;
+                        });
                     }
-                }
+                });
             });
-        }
+
+        // Hide the popup window if mouse was clicked from outside
+        ui.input(|i| {
+            if i.pointer.any_click() &&
+                let Some(click_pos) = i.pointer.interact_pos() &&
+                let Some(r) = resp
+            {
+                let r_left_top = r.response.rect.left_top() + vec2(-15.0, 20.0);
+                let r_size = r.response.rect.size() + vec2(15.0, 20.0);
+                let popup_rect = Rect::from_min_size(r_left_top, r_size);
+                if !popup_rect.contains(click_pos) {
+                    self.show_qr = false;
+                }
+            }
+        });
     }
     fn copy_to_clipboard(&self, img: Image, text: &str, ui: &mut Ui) {
         if ui
@@ -295,7 +300,7 @@ impl MyApp {
     pub(super) fn save_to(&mut self, ui: &mut Ui) {
         if let Some(tx_id) = &self.save_tx {
             let save_img = Image::new(SizedTexture::new(tx_id.id(), vec2(24., 24.)));
-            let save_text = RichText::new(inscriptions::save_to(self.lang).to_lowercase());
+            let save_text = RichText::new(inscriptions::save_to(self.lang));
 
             if ui
                 .add(save_img.sense(Sense::click()))
@@ -312,8 +317,40 @@ impl MyApp {
         }
     }
 
+    pub(super) fn pause(&mut self, ui: &mut Ui) {
+        let tx_handle = if self.dl_paused { &self.play_tx } else { &self.pause_tx };
+        if let Some(tx_id) = tx_handle {
+            let img = Image::new(SizedTexture::new(tx_id.id(), vec2(30., 30.)));
+            let hint =
+                if self.dl_paused { hints::resume(self.lang) }
+                else { hints::pause(self.lang) };
+
+            let text = RichText::new(hint);
+
+            if ui
+                .add(img.sense(Sense::click()))
+                .on_hover_cursor(CursorIcon::PointingHand)
+                .on_hover_text(text)
+                .clicked()
+                    &&
+                let Ok(tx) = self.control_tx.try_read()
+            {
+                if self.dl_paused {
+                    let _ = tx.send(Command::Start);
+                    self.dl_paused = false;
+                }
+                else {
+                    let _ = tx.send(Command::Pause);
+                    self.dl_paused = true;
+                }
+                ui.request_repaint();
+            }
+        }
+    }
+
     pub(super) fn download(&mut self) {
-        // 1. Change name and status of Download button
+
+        // 1. Change name and status of the 'Download' button
         if self.dl_started &&
            let Ok(tx) = self.control_tx.try_read()
         {
@@ -324,9 +361,7 @@ impl MyApp {
         self.dl_button_name = inscriptions::cancel;
         self.dl_started = true;
 
-        // 2. Create Pause button
-
-        // 3. Main logic
+        // 2. Main logic
         let form = self.form;
         let genre = self.genre;
         let quantity = self.quantity;
@@ -429,8 +464,7 @@ impl MyApp {
         }
     }
 
-
-    pub(crate) fn progress_bar(&mut self, ui: &mut Ui) {
+    pub(super) fn progress_bar(&mut self, ui: &mut Ui) {
 
         // --- 1. Define the area where the UI elements will live ---
         let rect = ui.available_rect_before_wrap();

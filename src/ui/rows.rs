@@ -112,7 +112,7 @@ impl MyApp {
             let legend = self.dl_button_name;
             let button_text = egui::RichText::new(legend(self.lang)).size(24.0);
             let button = egui::Button::new(button_text)
-                .min_size(egui::vec2(200., 30.));
+                .min_size(egui::vec2(170., 30.));
 
             if ui.add(button)
                 .on_hover_cursor(CursorIcon::PointingHand)
@@ -120,6 +120,7 @@ impl MyApp {
             {
                 self.download();
             }
+            if self.dl_started { self.pause(ui); }
         });
     }
 
@@ -128,9 +129,11 @@ impl MyApp {
             ui.horizontal(|ui| {
                 ui.with_layout(Layout::left_to_right(Align::Min), |ui| {
                     ui.label(VERSION);
-                    ui.hyperlink_to("hardglitch", "https://github.com/hardglitch");
+                    ui
+                        .hyperlink_to("hardglitch", "https://github.com/hardglitch")
+                        .on_hover_text("https://github.com/hardglitch");
                     self.donate(ui);
-                    self.donate_popup(ui);
+                    if self.show_qr { self.donate_popup(ui); }
                     self.lang_switcher(ui);
                 });
             });

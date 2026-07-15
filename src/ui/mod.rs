@@ -48,6 +48,9 @@ pub struct MyApp {
     // Download
     dl_button_name: fn(Lang) -> &'static str,
     dl_started: bool,
+    dl_paused: bool,
+    play_tx: Option<TextureHandle>,
+    pause_tx: Option<TextureHandle>,
 
     // System
     pub db: Option<Database>,
@@ -72,7 +75,7 @@ impl Default for MyApp {
             period: true,
             lossless: true,
 
-            lang: dictionary::Lang::En,
+            lang: Lang::En,
             save_to: PathBuf::from("Downloaded music"),
             save_tx: None,
             last_download: 0,
@@ -90,6 +93,9 @@ impl Default for MyApp {
 
             dl_button_name: dictionary::inscriptions::download,
             dl_started: false,
+            dl_paused: false,
+            play_tx: None,
+            pause_tx: None,
 
             db: None,
             common_tx: Arc::new(RwLock::new(tx1)),
