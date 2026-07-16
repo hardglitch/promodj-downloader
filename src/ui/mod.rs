@@ -3,15 +3,16 @@ mod rows;
 
 use crate::data::consts::{FORMS, GENRES};
 use crate::data::dictionary;
+use crate::data::dictionary::Lang;
 use crate::db::dbcore::Database;
+use crate::logic::proxy::ProxyType;
+use crate::logic::Command;
 use eframe::{App, Frame};
-use egui::{Pos2, TextureHandle, Ui};
+use egui::{Pos2, Rect, TextureHandle, Ui};
 use std::path::PathBuf;
 use std::sync::Arc;
 use tokio::sync::mpsc::{UnboundedReceiver, UnboundedSender};
 use tokio::sync::RwLock;
-use crate::data::dictionary::Lang;
-use crate::logic::Command;
 
 #[derive(Clone)]
 pub struct MyApp {
@@ -28,8 +29,22 @@ pub struct MyApp {
     pub period: bool,
     pub lossless: bool,
 
+    pub use_proxy: bool,
+    show_proxy_window: bool,
+    proxy_window_pos: Pos2,
+    proxy_type: ProxyType,
+    proxy_host_part1: u8,
+    proxy_host_part2: u8,
+    proxy_host_part3: u8,
+    proxy_host_part4: u8,
+    proxy_port: u16,
+    proxy_login: Arc<RwLock<String>>,
+    proxy_password: Arc<RwLock<String>>,
+    proxy_rect: Option<Rect>,
+    proxy_settings_tx: Option<TextureHandle>,
+
     // Options
-    pub lang: dictionary::Lang,
+    pub lang: Lang,
     save_to: PathBuf,
     save_tx: Option<TextureHandle>,
     last_download: usize,
@@ -39,6 +54,7 @@ pub struct MyApp {
     qr_eth: Option<TextureHandle>,
     show_qr: bool,
     qr_pos: Pos2,
+    qr_rect: Option<Rect>,
 
     // Progress bar/Messages
     message: Option<String>,
@@ -79,6 +95,20 @@ impl Default for MyApp {
             period: true,
             lossless: true,
 
+            use_proxy: false,
+            show_proxy_window: false,
+            proxy_window_pos: Default::default(),
+            proxy_type: ProxyType::default(),
+            proxy_host_part1: 127,
+            proxy_host_part2: 0,
+            proxy_host_part3: 0,
+            proxy_host_part4: 1,
+            proxy_port: 8080,
+            proxy_login: Arc::new(RwLock::new(String::new())),
+            proxy_password: Arc::new(RwLock::new(String::new())),
+            proxy_rect: None,
+            proxy_settings_tx: None,
+
             lang: Lang::En,
             save_to: PathBuf::from("Downloaded music"),
             save_tx: None,
@@ -88,6 +118,7 @@ impl Default for MyApp {
             qr_eth: None,
             show_qr: false,
             qr_pos: Default::default(),
+            qr_rect: None,
 
             message: None,
             progress: 0.0,
@@ -117,6 +148,8 @@ impl App for MyApp {
         }
 
         egui::CentralPanel::default().show(ui, |ui| {
+            // ui.set_zoom_factor(1.25);
+
             self.main_row(ui);
             ui.add_space(10.);
             self.toggles_row(ui);

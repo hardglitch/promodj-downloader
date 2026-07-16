@@ -134,6 +134,34 @@ pub mod hints {
             Lang::Uk => "Продовжити",
         }
     }
+    pub const fn proxy<'a>(lang: Lang) -> &'a str {
+        match lang {
+            Lang::En => "Use a proxy-server for downloading",
+            Lang::Ru => "Использовать прокси-сервер для скачивания",
+            Lang::Uk => "Використовувати проксі-сервер для завантаження",
+        }
+    }
+    pub const fn proxy_settings<'a>(lang: Lang) -> &'a str {
+        match lang {
+            Lang::En => "Settings for connecting to the proxy server",
+            Lang::Ru => "Настройки подключения к прокси-серверу",
+            Lang::Uk => "Налаштування підключення до проксі-сервера",
+        }
+    }
+    pub const fn login<'a>(lang: Lang) -> &'a str {
+        match lang {
+            Lang::En => "your_login",
+            Lang::Ru => "ваш_логин",
+            Lang::Uk => "ваш логін",
+        }
+    }
+    pub const fn password<'a>(lang: Lang) -> &'a str {
+        match lang {
+            Lang::En => "your_password",
+            Lang::Ru => "ваш_пароль",
+            Lang::Uk => "ваш_пароль",
+        }
+    }
 }
 pub mod ui_messages {
     use super::Lang;

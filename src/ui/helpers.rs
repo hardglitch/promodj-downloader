@@ -4,7 +4,9 @@ use crate::data::dictionary::{hints, inscriptions, Lang};
 use crate::db::dbcore::{Database, DB_NAME};
 use crate::log;
 use crate::logic::file::download_files;
+use crate::logic::proxy::ProxyType;
 use crate::logic::search::{Link, LinkParams};
+use crate::logic::Command;
 use crate::ui::MyApp;
 use configparser::ini::Ini;
 use eframe::emath::{vec2, Align, Rect};
@@ -13,7 +15,7 @@ use eframe::epaint::textures::TextureOptions;
 use eframe::epaint::{Color32, ColorImage, FontFamily};
 use eframe::CreationContext;
 use egui::load::SizedTexture;
-use egui::{CursorIcon, FontId, Image, Label, Layout, Pos2, RichText, Sense, Ui, Vec2, Window};
+use egui::{pos2, ComboBox, CursorIcon, FontId, Image, Label, Layout, Pos2, Response, RichText, Sense, TextStyle, TextureId, Ui, Vec2, Window};
 use image::{GenericImageView, ImageBuffer};
 use image::{ImageError, ImageResult, Rgba};
 use std::io::Write;
@@ -21,8 +23,12 @@ use std::path::PathBuf;
 use std::str::FromStr;
 use std::sync::Arc;
 use std::time::UNIX_EPOCH;
-use crate::logic::Command;
+use strum::IntoEnumIterator;
 
+enum Color {
+    LightGray,
+    White,
+}
 impl MyApp {
     pub fn new(ctx: &CreationContext) -> Self {
         let mut fonts = FontDefinitions::default();
@@ -155,25 +161,40 @@ impl MyApp {
         self.qr_eth = Some(th);
 
         let img = include_bytes!("../../assets/save.ico");
-        let color_image = Self::process_image(img)?;
+        let color_image = Self::process_image(img, Color::White)?;
         let th = ctx.egui_ctx.load_texture("save_tx", color_image, TextureOptions::default());
         self.save_tx = Some(th);
 
         let img = include_bytes!("../../assets/pause.ico");
-        let color_image = Self::process_image(img)?;
+        let color_image = Self::process_image(img, Color::LightGray)?;
         let th = ctx.egui_ctx.load_texture("pause_tx", color_image, TextureOptions::default());
         self.pause_tx = Some(th);
 
         let img = include_bytes!("../../assets/play.ico");
-        let color_image = Self::process_image(img)?;
+        let color_image = Self::process_image(img, Color::LightGray)?;
         let th = ctx.egui_ctx.load_texture("play_tx", color_image, TextureOptions::default());
         self.play_tx = Some(th);
+
+        let img = include_bytes!("../../assets/gear.png");
+        let color_image = Self::process_image(img, Color::White)?;
+        let th = ctx.egui_ctx.load_texture("settings_tx", color_image, TextureOptions::default());
+        self.proxy_settings_tx = Some(th);
 
         Ok(())
     }
 
-    // Paint any image to light-gray color
-    fn process_image(img: &[u8]) -> Result<ColorImage, ImageError> {
+    fn glow_effect(ui: &mut Ui, response: &Response, texture_id: TextureId) {
+        let is_hovered = response.hovered();
+        let final_color = if is_hovered { Color32::WHITE } else { Color32::GRAY };
+        ui.painter().image(
+            texture_id,
+            response.rect,
+            Rect::from_min_max(pos2(0.0, 0.0), pos2(1.0, 1.0)),
+            final_color,
+        );
+    }
+
+    fn process_image(img: &[u8], color: Color) -> Result<ColorImage, ImageError> {
         let original_image = image::load_from_memory(img)?;
 
         // 1. Create a new buffer for the processed image
@@ -191,7 +212,10 @@ impl MyApp {
                 if alpha == 0 {
                     processed_image.put_pixel(x, y, pixel);
                 } else {
-                    let new_pixel = Rgba([200, 200, 200, alpha]);
+                    let new_pixel = match color {
+                        Color::LightGray => Rgba([200, 200, 200, alpha]),
+                        Color::White => Rgba([255, 255, 255, alpha]),
+                    };
                     processed_image.put_pixel(x, y, new_pixel);
                 }
             }
@@ -245,11 +269,13 @@ impl MyApp {
             .on_hover_cursor(CursorIcon::PointingHand)
             .on_hover_text(hints::donate(self.lang));
 
+        self.qr_rect = Some(donate.rect);
+
         if donate.clicked() &&
            let Some(pos) = ui.pointer_interact_pos()
         {
             self.qr_pos.x = pos.x + 10.0;
-            self.qr_pos.y = pos.y - 650.0;
+            self.qr_pos.y = pos.y - 190.0;
             self.show_qr = !self.show_qr;
         }
     }
@@ -292,13 +318,13 @@ impl MyApp {
         // Hide the popup window if mouse was clicked from outside
         ui.input(|i| {
             if i.pointer.any_click() &&
-                let Some(click_pos) = i.pointer.interact_pos() &&
-                let Some(r) = resp
+               let Some(click_pos) = i.pointer.interact_pos() &&
+               let Some(r) = resp
             {
-                let r_left_top = r.response.rect.left_top() + vec2(-15.0, 20.0);
-                let r_size = r.response.rect.size() + vec2(15.0, 20.0);
-                let popup_rect = Rect::from_min_size(r_left_top, r_size);
-                if !popup_rect.contains(click_pos) {
+                // dbg!(&r.response.rect, &self.qr_rect, &click_pos);
+                if !r.response.rect.contains(click_pos) &&
+                    self.qr_rect.is_some_and(|r| !r.contains(click_pos))
+                {
                     self.show_qr = false;
                 }
             }
@@ -315,15 +341,166 @@ impl MyApp {
         };
     }
 
+    pub(super) fn proxy_settings(&mut self, ui: &mut Ui) {
+        if let Some(tx_id) = &self.proxy_settings_tx {
+            let img = Image::new(SizedTexture::new(tx_id.id(), vec2(16., 16.)));
+            let text = RichText::new(hints::proxy_settings(self.lang));
+
+            let button = ui.add(img.sense(Sense::click()));
+            Self::glow_effect(ui, &button, tx_id.id());
+            self.proxy_rect = Some(button.rect);
+
+            if button
+                .on_hover_cursor(CursorIcon::PointingHand)
+                .on_hover_text(text)
+                .clicked()
+                &&
+                let Some(pos) = ui.pointer_interact_pos()
+            {
+                self.proxy_window_pos.x = pos.x - 390.0;
+                self.proxy_window_pos.y = pos.y + 10.0;
+                self.show_proxy_window = !self.show_proxy_window;
+
+                self.save_settings();
+            }
+        }
+    }
+    pub(super) fn proxy_popup(&mut self, ui: &mut Ui) {
+        let resp = Window::new("proxy")
+            .fixed_size(Vec2::new(410., 100.0))
+            .title_bar(false)
+            .resizable(false)
+            .fixed_pos(self.proxy_window_pos)
+            .show(ui, |ui| {
+                ui.add_space(5.);
+
+                ui.horizontal(|ui| {
+
+                    // 1. Proxy type | Host | Port
+                    // 1-1. Proxy type
+                    let state_before = self.proxy_type;
+                    ComboBox::new("proxy_type", "")
+                        .selected_text(self.proxy_type.to_string().to_lowercase())
+                        // .width(250.)
+                        .show_ui(ui, |ui| {
+                            for proxy_type in ProxyType::iter() {
+                                ui.selectable_value(&mut self.proxy_type, proxy_type, proxy_type.to_string());
+                            }
+                        });
+                    if self.proxy_type != state_before { self.save_settings(); }
+
+                    // 1-2-1. Host part 1
+                    let state_before = self.proxy_host_part1;
+                    ui.add(egui::DragValue::new(&mut self.proxy_host_part1)
+                        .speed(0.5)
+                        .range(0..=255)
+                    );
+                    if self.proxy_host_part1 != state_before { self.save_settings(); }
+
+                    ui.label(".");
+
+                    // 1-2-2. Host part 2
+                    let state_before = self.proxy_host_part2;
+                    ui.add(egui::DragValue::new(&mut self.proxy_host_part2)
+                        .speed(0.5)
+                        .range(0..=255)
+                    );
+                    if self.proxy_host_part2 != state_before { self.save_settings(); }
+
+                    ui.label(".");
+
+                    // 1-2-3. Host part 3
+                    let state_before = self.proxy_host_part3;
+                    ui.add(egui::DragValue::new(&mut self.proxy_host_part3)
+                        .speed(0.5)
+                        .range(0..=255)
+                    );
+                    if self.proxy_host_part3 != state_before { self.save_settings(); }
+
+                    ui.label(".");
+
+                    // 1-2-4. Host part 4
+                    let state_before = self.proxy_host_part4;
+                    ui.add(egui::DragValue::new(&mut self.proxy_host_part4)
+                        .speed(0.5)
+                        .range(0..=255)
+                    );
+                    if self.proxy_host_part4 != state_before { self.save_settings(); }
+
+                    ui.label(":");
+
+                    // 1-3. Port
+                    let state_before = self.proxy_port;
+                    ui.add(egui::DragValue::new(&mut self.proxy_port)
+                        .speed(0.5)
+                        .range(0..=u16::MAX)
+                    );
+                    if self.proxy_port != state_before { self.save_settings(); }
+                });
+
+                ui.add_space(5.);
+
+                // 2. Auth
+                // 2-1. Login (disabled if not http_auth)
+                ui.horizontal(|ui| {
+                    if let Ok(mut buf) = self.proxy_login.try_write() {
+                       let enabled = matches!(self.proxy_type, ProxyType::HttpAuth);
+                       let widget = egui::widgets::TextEdit::singleline(&mut *buf)
+                            .desired_width(ui.available_width())
+                            .hint_text(hints::login(self.lang))
+                            .font(TextStyle::Heading)
+                            .desired_rows(1)
+                            .interactive(enabled);
+
+                        ui.add(widget);
+                    }
+                });
+
+                // 2-2. Password (disabled if not http_auth)
+                ui.horizontal(|ui| {
+                    if let Ok(mut buf) = self.proxy_password.try_write() {
+                        let enabled = matches!(self.proxy_type, ProxyType::HttpAuth);
+                        let widget = egui::widgets::TextEdit::singleline(&mut *buf)
+                            .desired_width(ui.available_width())
+                            .hint_text(hints::password(self.lang))
+                            .font(TextStyle::Heading)
+                            .desired_rows(1)
+                            .password(true)
+                            .interactive(enabled);
+
+                        ui.add(widget);
+                    }
+                });
+            });
+
+        // Hide the popup window if mouse was clicked from outside
+        ui.input(|i| {
+            if i.pointer.any_click() &&
+               let Some(click_pos) = i.pointer.interact_pos() &&
+               let Some(r) = resp
+            {
+                // dbg!(&r.response.rect, &self.proxy_rect, &click_pos);
+                if !r.response.rect.contains(click_pos) &&
+                   self.proxy_rect.is_some_and(|r| !r.contains(click_pos))
+                {
+                    self.show_proxy_window = false;
+                    // self.save_proxy();
+                }
+            }
+        });
+    }
+
     pub(super) fn save_to(&mut self, ui: &mut Ui) {
         if let Some(tx_id) = &self.save_tx {
-            let save_img = Image::new(SizedTexture::new(tx_id.id(), vec2(24., 24.)));
-            let save_text = RichText::new(inscriptions::save_to(self.lang));
+            let img = Image::new(SizedTexture::new(tx_id.id(), vec2(24., 24.)));
+            let text = RichText::new(inscriptions::save_to(self.lang));
 
-            if ui
-                .add(save_img.sense(Sense::click()))
+            let button = ui.add(img.sense(Sense::click()));
+            Self::glow_effect(ui, &button, tx_id.id());
+
+            if button
                 .on_hover_cursor(CursorIcon::PointingHand)
-                .on_hover_text(save_text)
+                .on_hover_text(text)
                 .clicked()
                     &&
             let Some(path) = rfd::FileDialog::new()

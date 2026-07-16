@@ -48,7 +48,7 @@ impl MyApp {
 
     pub(super) fn toggles_row(&mut self, ui: &mut Ui) {
         ui.horizontal(|ui| {
-            ui.add_space(50.);
+            ui.add_space(10.);
 
             ui.vertical(|ui| {
                 ui.set_width(60.);
@@ -108,7 +108,27 @@ impl MyApp {
                     }
                 });
             });
+
+            ui.vertical(|ui| {
+                ui.set_width(50.);
+                ui.with_layout(Layout::centered_and_justified(egui::Direction::TopDown), |ui| {
+                    if ui
+                        .toggle_value(&mut self.use_proxy, "Proxy")
+                        .on_hover_cursor(CursorIcon::PointingHand)
+                        .on_hover_text(hints::proxy(self.lang))
+                        .clicked()
+                    {
+                        self.save_settings();
+                    }
+                });
+            });
+
+            ui.vertical(|ui| {
+                self.proxy_settings(ui);
+            });
         });
+
+        if self.show_proxy_window { self.proxy_popup(ui); }
     }
 
     pub(super) fn save_file_row(&mut self, ui: &mut Ui) {
