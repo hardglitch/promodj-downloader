@@ -42,6 +42,11 @@ impl Link {
         {
             // If we found nothing on this page, stop searching
             if page_number > 1 && found_links.is_empty() { break; }
+			
+			// This is for safe scanning
+			if page_number > 1 {
+				tokio::time::sleep(Duration::from_millis(500)).await;
+			}
 
             let page = Page::new(
                 page_number,
@@ -73,9 +78,6 @@ impl Link {
             else { break; }
 
             page_number += 1;
-
-            // This is for safe scanning
-            tokio::time::sleep(Duration::from_millis(500)).await;
         }
 
         drop(searching);
