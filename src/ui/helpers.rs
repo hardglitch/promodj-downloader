@@ -34,10 +34,11 @@ impl MyApp {
     pub fn new(ctx: &CreationContext, db: Arc<Database>) -> Self {
 
         // Default settings of the App
-        let mut app = Self::default();
-
-        // Set db
-        app.db = Some(db);
+        let mut app = MyApp {
+            db: Some(db),
+            last_download_days: Self::last_download_days().unwrap_or_default(),
+            ..Default::default()
+        };
 
         // Apply a custom font
         let mut fonts = FontDefinitions::default();
@@ -46,9 +47,6 @@ impl MyApp {
         fonts.families.get_mut(&FontFamily::Proportional)
             .into_iter().for_each(|font| { font.insert(0, "font".to_owned()); });
         ctx.egui_ctx.set_fonts(fonts);
-
-        // Last days for Header
-        app.last_download_days = Self::last_download_days().unwrap_or_default();
 
         // Try load the proxy settings
         if let Err(e) = app.load_proxy() { log!("Failed to load the proxy settings: {e}") }
