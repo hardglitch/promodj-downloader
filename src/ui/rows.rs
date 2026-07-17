@@ -32,12 +32,16 @@ impl MyApp {
             if self.form != state_before { self.save_settings(); }
 
             // Quantity
-            let state_before = self.quantity;
-            ui.add(egui::DragValue::new(&mut self.quantity)
-                .speed(0.5)
-                .range(0.0..=1000.0)
-            ).on_hover_text(hints::quantity(self.lang));
-            if self.quantity != state_before { self.save_settings(); }
+            let state_before = self.quantity.clone();
+            ui.add(
+                egui::widgets::TextEdit::singleline(&mut self.quantity)
+                    .desired_width(40.)
+            )
+                .on_hover_text(hints::quantity(self.lang));
+            if self.quantity != state_before &&
+               self.quantity.parse::<u16>().is_ok_and(|n| n <= 1000)
+            { self.save_settings(); }
+            else { self.quantity = state_before }
 
             let last =
                 if self.period { inscriptions::last_days(self.lang) }
@@ -112,14 +116,10 @@ impl MyApp {
             ui.vertical(|ui| {
                 ui.set_width(50.);
                 ui.with_layout(Layout::centered_and_justified(egui::Direction::TopDown), |ui| {
-                    if ui
+                    ui
                         .toggle_value(&mut self.use_proxy, "Proxy")
                         .on_hover_cursor(CursorIcon::PointingHand)
-                        .on_hover_text(hints::proxy(self.lang))
-                        .clicked()
-                    {
-                        self.save_settings();
-                    }
+                        .on_hover_text(hints::proxy(self.lang));
                 });
             });
 

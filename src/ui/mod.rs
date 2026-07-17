@@ -21,7 +21,7 @@ pub struct MyApp {
     // Dropdowns
     pub genre: &'static str,
     pub form: &'static str,
-    pub quantity: usize,
+    pub quantity: String,
 
     // Toggle values
     pub file_history: bool,
@@ -32,14 +32,11 @@ pub struct MyApp {
     pub use_proxy: bool,
     show_proxy_window: bool,
     proxy_window_pos: Pos2,
-    proxy_type: ProxyType,
-    proxy_host_part1: u8,
-    proxy_host_part2: u8,
-    proxy_host_part3: u8,
-    proxy_host_part4: u8,
-    proxy_port: u16,
-    proxy_login: Arc<RwLock<String>>,
-    proxy_password: Arc<RwLock<String>>,
+    pub proxy_type: ProxyType,
+    pub proxy_host: String,
+    pub proxy_port: String,
+    pub proxy_login: Arc<RwLock<String>>,
+    pub proxy_password: Arc<RwLock<String>>,
     proxy_rect: Option<Rect>,
     proxy_settings_tx: Option<TextureHandle>,
 
@@ -88,7 +85,7 @@ impl Default for MyApp {
 
             genre: GENRES[231].0, // Techno
             form: FORMS[0],       // mixes
-            quantity: 1,
+            quantity: "1".to_owned(),
 
             file_history: true,
             overwrite_files: true,
@@ -99,11 +96,8 @@ impl Default for MyApp {
             show_proxy_window: false,
             proxy_window_pos: Default::default(),
             proxy_type: ProxyType::default(),
-            proxy_host_part1: 127,
-            proxy_host_part2: 0,
-            proxy_host_part3: 0,
-            proxy_host_part4: 1,
-            proxy_port: 8080,
+            proxy_host: "127.0.0.1".to_owned(),
+            proxy_port: "8080".to_owned(),
             proxy_login: Arc::new(RwLock::new(String::new())),
             proxy_password: Arc::new(RwLock::new(String::new())),
             proxy_rect: None,

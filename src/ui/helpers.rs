@@ -19,6 +19,7 @@ use egui::{pos2, ComboBox, CursorIcon, FontId, Image, Label, Layout, Pos2, Respo
 use image::{GenericImageView, ImageBuffer};
 use image::{ImageError, ImageResult, Rgba};
 use std::io::Write;
+use std::net::IpAddr;
 use std::path::PathBuf;
 use std::str::FromStr;
 use std::sync::Arc;
@@ -31,18 +32,17 @@ enum Color {
 }
 impl MyApp {
     pub fn new(ctx: &CreationContext) -> Self {
+
+        // Default settings of the App
+        let mut app = Self::default();
+
+        // Apply a custom font
         let mut fonts = FontDefinitions::default();
         fonts.font_data
-            .insert(
-                "font".to_owned(),
-                Arc::new(FontData::from_static(include_bytes!("../../assets/font.ttf")))
-            );
-        fonts.families.get_mut(&FontFamily::Proportional).unwrap()
-            .insert(0, "font".to_owned());
-
+            .insert("font".to_owned(), Arc::new(FontData::from_static(include_bytes!("../../assets/font.ttf"))));
+        fonts.families.get_mut(&FontFamily::Proportional)
+            .into_iter().for_each(|font| { font.insert(0, "font".to_owned()); });
         ctx.egui_ctx.set_fonts(fonts);
-
-        let mut app = Self::default();
 
         // Try open history.db
         let (tx, mut rx) = tokio::sync::oneshot::channel::<Database>();
@@ -55,8 +55,12 @@ impl MyApp {
         app.db = rx.try_recv().ok();
         app.last_download_days = Self::last_download_days().unwrap_or_default();
 
+        // Try load the proxy settings
+        if let Err(e) = app.load_proxy() { log!("Failed to load the proxy settings: {e}") }
+
+        // Try load textures
         app.load_settings();
-        if let Err(e) = app.load_textures(ctx) { log!("Load textures: {e}") }
+        if let Err(e) = app.load_textures(ctx) { log!("Failed to load textures: {e}") }
         app
     }
 
@@ -75,7 +79,10 @@ impl MyApp {
         config.set("default", "Period", Some(self.period.to_string()));
         config.set("default", "OverwriteFiles", Some(self.overwrite_files.to_string()));
         config.set("default", "FileHistory", Some(self.file_history.to_string()));
-        config.set("default", "Quantity", Some(self.quantity.to_string()));
+
+        if let Ok(quantity) = self.quantity.parse::<u16>() {
+            config.set("default", "Quantity", Some(quantity.to_string()));
+        }
 
         if let Err(e) = config.write("settings.ini") { log!("Config: {e}"); }
     }
@@ -140,7 +147,7 @@ impl MyApp {
 
             // Quantity
             if let Ok(Some(q)) = config.getuint("default", "Quantity") {
-                self.quantity = q as usize;
+                self.quantity = (q as usize).to_string();
             }
         }
     }
@@ -354,14 +361,12 @@ impl MyApp {
                 .on_hover_cursor(CursorIcon::PointingHand)
                 .on_hover_text(text)
                 .clicked()
-                &&
+                    &&
                 let Some(pos) = ui.pointer_interact_pos()
             {
                 self.proxy_window_pos.x = pos.x - 390.0;
                 self.proxy_window_pos.y = pos.y + 10.0;
                 self.show_proxy_window = !self.show_proxy_window;
-
-                self.save_settings();
             }
         }
     }
@@ -378,64 +383,38 @@ impl MyApp {
 
                     // 1. Proxy type | Host | Port
                     // 1-1. Proxy type
-                    let state_before = self.proxy_type;
                     ComboBox::new("proxy_type", "")
                         .selected_text(self.proxy_type.to_string().to_lowercase())
-                        // .width(250.)
                         .show_ui(ui, |ui| {
                             for proxy_type in ProxyType::iter() {
                                 ui.selectable_value(&mut self.proxy_type, proxy_type, proxy_type.to_string());
                             }
                         });
-                    if self.proxy_type != state_before { self.save_settings(); }
 
-                    // 1-2-1. Host part 1
-                    let state_before = self.proxy_host_part1;
-                    ui.add(egui::DragValue::new(&mut self.proxy_host_part1)
-                        .speed(0.5)
-                        .range(0..=255)
-                    );
-                    if self.proxy_host_part1 != state_before { self.save_settings(); }
-
-                    ui.label(".");
-
-                    // 1-2-2. Host part 2
-                    let state_before = self.proxy_host_part2;
-                    ui.add(egui::DragValue::new(&mut self.proxy_host_part2)
-                        .speed(0.5)
-                        .range(0..=255)
-                    );
-                    if self.proxy_host_part2 != state_before { self.save_settings(); }
-
-                    ui.label(".");
-
-                    // 1-2-3. Host part 3
-                    let state_before = self.proxy_host_part3;
-                    ui.add(egui::DragValue::new(&mut self.proxy_host_part3)
-                        .speed(0.5)
-                        .range(0..=255)
-                    );
-                    if self.proxy_host_part3 != state_before { self.save_settings(); }
-
-                    ui.label(".");
-
-                    // 1-2-4. Host part 4
-                    let state_before = self.proxy_host_part4;
-                    ui.add(egui::DragValue::new(&mut self.proxy_host_part4)
-                        .speed(0.5)
-                        .range(0..=255)
-                    );
-                    if self.proxy_host_part4 != state_before { self.save_settings(); }
+                    // 1-2. Host
+                    let state_before = self.proxy_host.clone();
+                    let widget = egui::widgets::TextEdit::singleline(&mut self.proxy_host)
+                        .desired_width(200.);
+                    ui.add(widget);
+                    if self.proxy_host == state_before ||
+                       self.proxy_host.parse::<IpAddr>().is_err()
+                    {
+                        self.proxy_host = state_before
+                    }
 
                     ui.label(":");
 
                     // 1-3. Port
-                    let state_before = self.proxy_port;
-                    ui.add(egui::DragValue::new(&mut self.proxy_port)
-                        .speed(0.5)
-                        .range(0..=u16::MAX)
-                    );
-                    if self.proxy_port != state_before { self.save_settings(); }
+                    let state_before = self.proxy_port.clone();
+                    let widget = egui::widgets::TextEdit::singleline(&mut self.proxy_port)
+                        .desired_width(50.);
+                    ui.add(widget);
+                    if self.proxy_port == state_before ||
+                       self.proxy_port.parse::<u16>().is_err()
+                    {
+                        self.proxy_port = state_before
+                    }
+
                 });
 
                 ui.add_space(5.);
@@ -484,7 +463,7 @@ impl MyApp {
                    self.proxy_rect.is_some_and(|r| !r.contains(click_pos))
                 {
                     self.show_proxy_window = false;
-                    // self.save_proxy();
+                    self.save_proxy();
                 }
             }
         });
@@ -564,7 +543,7 @@ impl MyApp {
         // 2. Main logic
         let form = self.form;
         let genre = self.genre;
-        let quantity = self.quantity;
+        let quantity = if let Ok(q) = self.quantity.parse::<u16>() { q as usize } else { return };
         let period = self.period;
         let lang = self.lang;
         let file_history = self.file_history;
@@ -586,7 +565,7 @@ impl MyApp {
                 file_history,
                 lossless,
                 client: client.clone(),
-                db,
+                db: &db,
                 common_tx: common_tx.clone(),
             };
 
@@ -603,6 +582,7 @@ impl MyApp {
                             &save_to,
                             client.clone(),
                             overwrite_files,
+                            &db,
                             common_tx.clone(),
                             control_rx.clone(),
                           ).await;
@@ -624,7 +604,10 @@ impl MyApp {
                         }
                     }
                 }
-                Ok(None) => {}
+                Ok(None) => {
+                    let msg = dictionary::ui_messages::matching_files_not_found(lang);
+                    send(msg);
+                }
                 Err(e) => {
                     let msg = dictionary::errors::unable_to_connect(lang);
                     send(msg);
