@@ -143,6 +143,11 @@ impl MyApp {
             if let Ok(Some(q)) = config.getuint("default", "Quantity") {
                 self.quantity = (q as usize).to_string();
             }
+
+            // Proxy
+            if let Ok(Some(p)) = config.getbool("default", "Proxy") {
+                self.use_proxy = p;
+            }
         }
     }
 
@@ -232,6 +237,7 @@ impl MyApp {
         let mut config = Ini::new();
         if config.load("settings.ini").is_ok() &&
             let Ok(Some(last_ts)) = config.getuint("default", "LastDownload") &&
+            last_ts > 0 &&
             let Ok(ts) = std::time::SystemTime::now().duration_since(UNIX_EPOCH)
         {
             let days = ts.as_secs().saturating_sub(last_ts).saturating_div(3600 * 24);
