@@ -538,7 +538,6 @@ impl MyApp {
         }
 
         self.dl_button_name = inscriptions::cancel;
-        self.dl_started = true;
 
         // 2. Main logic
         let form = self.form;
@@ -577,6 +576,9 @@ impl MyApp {
 
             match Link::get_all_links(link_params).await {
                 Ok(Some(links)) => {
+                    if let Ok(tx) = common_tx.try_read() {
+                        let _ = tx.send(Command::Started);
+                    }
                     let res = download_files(
                             &links,
                             &save_to,
@@ -669,6 +671,10 @@ impl MyApp {
                 Command::Stop => {
                     self.dl_button_name = inscriptions::download;
                     self.dl_started = false;
+                    self.dl_paused = false;
+                }
+                Command::Started => {
+                    self.dl_started = true;
                 }
                 Command::Success => {
                     self.last_download_days = 0;
