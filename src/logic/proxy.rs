@@ -59,40 +59,29 @@ impl Display for Proxy {
 impl Proxy {
     fn parse(value: &[u8]) -> Option<Self> {
         let string = String::from_utf8(value.to_vec()).ok()?;
-        dbg!(&string);
 
         let (protocol, last) = string.split_once("://")?;
-        dbg!(&protocol);
 
         let (first, port) = last.rsplit_once(':')?;
         let port = port.parse::<u16>().ok()?;
-        dbg!(&port);
 
         let (login, password, last) =
             if let Some((login, last)) = first.split_once(':') &&
                let Some((password, last)) = last.split_once('@')
             {
-                dbg!(&login);
-                dbg!(&password);
                 (Some(login.to_owned()), Some(password.to_owned()), last)
             }
             else { (None, None, first) };
 
         let mut last = last.split( '.');
         let host_p1 = last.next()?.parse::<u8>().ok()?;
-        dbg!(&host_p1);
         let host_p2 = last.next()?.parse::<u8>().ok()?;
-        dbg!(&host_p2);
         let host_p3 = last.next()?.parse::<u8>().ok()?;
-        dbg!(&host_p3);
         let host_p4 = last.next()?.parse::<u8>().ok()?;
-        dbg!(&host_p4);
 
         let proxy_type = ProxyType::from(protocol).unwrap();
-        dbg!(&proxy_type);
 
         let address = SocketAddr::new(IpAddr::V4(Ipv4Addr::new(host_p1, host_p2, host_p3, host_p4)), port);
-        dbg!(&address);
 
         let proxy = Self {
             proxy_type,
@@ -100,7 +89,6 @@ impl Proxy {
             login,
             password,
         };
-        dbg!(&proxy);
 
         Some(proxy)
     }
@@ -157,12 +145,13 @@ impl MyApp {
         Ok(())
     }
     fn proxy_logic(&mut self, proxy: &Proxy) -> anyhow::Result<()> {
-        let proxy_url = reqwest::Proxy::http(proxy.to_string())?;
-        let client = reqwest::Client::builder()
-            .proxy(proxy_url)
-            .build()?;
-
-        self.client = client;
+        if self.use_proxy {
+            let proxy_url = reqwest::Proxy::http(proxy.to_string())?;
+            let client = reqwest::Client::builder()
+                .proxy(proxy_url)
+                .build()?;
+            self.client = client;
+        }
 
         self.proxy_type = proxy.proxy_type;
         self.proxy_host = proxy.address.ip().to_string();

@@ -24,7 +24,7 @@ pub struct LinkParams<'a> {
     pub file_history: bool,
     pub lossless: bool,
     pub client: reqwest::Client,
-    pub db: Option<Database>,
+    pub db: Option<Arc<Database>>,
     pub common_tx: Arc<RwLock<UnboundedSender<Command>>>,
 }
 
@@ -66,7 +66,9 @@ impl Link {
                     }
                     None => {
                         let msg = dictionary::errors::no_links_to_filtering(link_params.lang);
-                        link_params.common_tx.read().await.send(Command::Message(msg.to_owned()))?;
+                        if let Ok(tx) = link_params.common_tx.try_read() {
+                            tx.send(Command::Message(msg.to_owned()))?;
+                        }
                         return Ok(None);
                     }
                 };
@@ -101,18 +103,20 @@ impl Link {
 
         if unique_links.is_empty() {
             let msg = dictionary::errors::no_links_to_filtering(link_params.lang);
-            link_params.common_tx.read().await.send(Command::Message(msg.to_owned()))?;
+            if let Ok(tx) = link_params.common_tx.try_read() {
+                tx.send(Command::Message(msg.to_owned()))?;
+            }
             return Ok(None);
         }
 
         // 3. Check found links in the history
-        if link_params.file_history && let Some(db) = link_params.db {
-            db.filter_by_history(&mut unique_links).await;
+        let mut found_links = Vec::<String>::new();
+        if link_params.file_history &&
+           let Some(db) = link_params.db &&
+           let Some(links) = db.filter_by_history(unique_links).await
+        {
+            found_links = links;
         }
-
-        let mut found_links = unique_links.iter()
-            .map(|(name, ext)| { format!("{name}.{ext}") })
-            .collect::<Vec<String>>();
 
         // 4. Truncate found links
         if link_params.period { found_links.truncate(MAX_QUANTITY) }
@@ -120,7 +124,9 @@ impl Link {
 
         if found_links.is_empty() {
             let msg = dictionary::errors::no_links_to_download(link_params.lang);
-            link_params.common_tx.read().await.send(Command::Message(msg.to_owned()))?;
+            if let Ok(tx) = link_params.common_tx.try_read() {
+                tx.send(Command::Message(msg.to_owned()))?;
+            }
             return Ok(None);
         }
 
@@ -150,8 +156,8 @@ impl Link {
                     else { href.find("/source/").is_some() };
 
                 if format_matches && is_source {
-                    let decoded_href = percent_decode_str(href).decode_utf8()?;
-                    links.insert(decoded_href.to_string());
+                    let decoded_href = percent_decode_str(href).decode_utf8()?.to_lowercase();
+                    links.insert(decoded_href);
                 }
             }
         }
@@ -183,7 +189,9 @@ impl UiActionHandle {
             loop {
                 let dots = ".".repeat(i % 5);
                 let msg = format!("{dots}{action_}{dots}");
-                let _ = common_tx.read().await.send(Command::Message(msg));
+                if let Ok(tx) = common_tx.try_read() {
+                    let _ = tx.send(Command::Message(msg));
+                }
                 tokio::time::sleep(Duration::from_millis(100)).await;
                 i += 1;
             }

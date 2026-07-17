@@ -12,7 +12,7 @@ mod test_server;
 use ui::MyApp;
 use eframe::{egui::ViewportBuilder, NativeOptions};
 use std::io::Write;
-use utils::main_helpers::load_embedded_icon;
+use utils::main_helpers::{load_embedded_icon, load_db};
 use utils::logging::Log;
 
 #[tokio::main]
@@ -35,11 +35,13 @@ async fn main() {
         ..Default::default()
     };
 
+    let db = load_db().await;
+
     if let Err(e) =
         eframe::run_native(
             "",
             options,
-            Box::new(|ctx| Ok(Box::new(MyApp::new(ctx)))),
+            Box::new(|ctx| Ok(Box::new(MyApp::new(ctx, db)))),
         )
     { log!("{e}"); }
 }

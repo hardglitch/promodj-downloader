@@ -5,13 +5,13 @@ use crate::log;
 use sqlx_core::pool::PoolConnection;
 use std::collections::HashMap;
 use std::io::Write;
-use crate::data::consts::{LOSSLESS_COMPRESSED_FORMATS, LOSSLESS_UNCOMPRESSED_FORMATS, LOSSY_FORMATS};
+use sqlx_core::sql_str::AssertSqlSafe;
 
 impl Database {
-    pub async fn create_history_db(&self) -> Option<()> {
+    pub async fn create_tables(&self) -> Option<()> {
         let tx = async move |mut conn: PoolConnection<DBType>| -> Result<(), sqlx::Error> {
-            let query = "CREATE TABLE IF NOT EXISTS file_history(link TEXT NOT NULL);";
-            sqlx::query(sqlx::AssertSqlSafe(query)).execute(&mut *conn).await?;
+            sqlx::query("CREATE TABLE IF NOT EXISTS file_history(link TEXT NOT NULL UNIQUE)")
+                .execute(&mut *conn).await?;
             Ok(())
         };
         self.call(tx).await
@@ -32,8 +32,8 @@ impl Database {
                 return Ok(())
             }
 
-            let query = format!("INSERT INTO file_history VALUES({link});");
-            sqlx::query(sqlx::AssertSqlSafe(query))
+            sqlx::query("INSERT INTO file_history VALUES(?)")
+                .bind(link)
                 .execute(&mut *conn)
                 .await?;
             Ok(())
@@ -41,33 +41,34 @@ impl Database {
         self.call(tx).await
     }
 
-    pub async fn filter_by_history(&self, unique_links: &mut HashMap<&str, &str>) -> Option<()> {
-        let tx = async move |mut conn: PoolConnection<DBType>| -> Result<(), sqlx::Error> {
-            let query = "SELECT link FROM file_history LIMIT 100000;";
-            let records: Vec<String> = sqlx::query_scalar(sqlx::AssertSqlSafe(query))
-                .fetch_all(&mut *conn)
-                .await?;
-            let _ = unique_links.extract_if(|name, _ext|
-                records.contains(&name.to_string())
-                    ||
-                // for old databases created by the App <= v1.5.7
-                records.iter().any(|rec| {
-                    rec
-                        .rsplit_once('.')
-                        .into_iter()
-                        .filter_map(|(name_, ext_)| {
-                            if LOSSLESS_UNCOMPRESSED_FORMATS.contains(&ext_) ||
-                               LOSSLESS_COMPRESSED_FORMATS.contains(&ext_) ||
-                               LOSSY_FORMATS.contains(&ext_)
-                            { Some(name_) }
-                            else { None }
-                        })
-                        .any(|name_| {
-                            &name_ == name
-                        })
-                })
-            );
-            Ok(())
+    pub async fn filter_by_history(&self, unique_links: HashMap<&str, &str>) -> Option<Vec<String>> {
+        let tx = async move |mut conn: PoolConnection<DBType>| -> Result<Vec<String>, sqlx::Error> {
+
+            // 1. Collect all the link values into a vector
+            let links: Vec<&str> = unique_links.keys().cloned().collect();
+
+            // 2. Create the placeholders string (?, ?, ?, ...)
+            // We need one '?' for every link in the set.
+            let placeholders = links.iter().map(|_| "?").collect::<Vec<&str>>().join(",");
+
+            // 3. Construct the final SQL query
+            let query = format!("SELECT link FROM file_history WHERE link IN ({placeholders})");
+
+            // 4. Execute the query using sqlx::query_as
+            // We select the 'link' column. If a link exists, it will be returned.
+            let mut query = sqlx::query_scalar::<_, String>(AssertSqlSafe(query));
+            for link in links.iter() {
+                query = query.bind(link.to_owned());
+            }
+            let not_unique_links = query.fetch_all(&mut *conn).await?;
+
+            // 5. Delete not unique links
+            let links = unique_links.into_iter()
+                .filter(|(name, _ext)| !not_unique_links.contains(&name.to_string()))
+                .map(|(name, ext)| { format!("{name}.{ext}") })
+                .collect::<Vec<String>>();
+
+            Ok(links)
         };
         self.call(tx).await
     }

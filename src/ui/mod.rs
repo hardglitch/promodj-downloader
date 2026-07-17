@@ -68,7 +68,7 @@ pub struct MyApp {
     pause_tx: Option<TextureHandle>,
 
     // System
-    pub db: Option<Database>,
+    pub db: Option<Arc<Database>>,
     pub common_tx: Arc<RwLock<UnboundedSender<Command>>>,
     pub common_rx: Arc<RwLock<UnboundedReceiver<Command>>>,
     pub control_tx: Arc<RwLock<UnboundedSender<Command>>>,
@@ -154,7 +154,7 @@ impl App for MyApp {
             self.buttons(ui);
             self.bottom_row(ui);
 
-            self.common_receiver(ui);
+            self.common_receiver();
         });
     }
 }

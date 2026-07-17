@@ -14,4 +14,5 @@ pub enum Command {
     Stop,
     Message(String),
     Progress(f32, usize, usize),
+    Success,
 }

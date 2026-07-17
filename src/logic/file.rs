@@ -7,12 +7,14 @@ use std::time::Duration;
 use tokio::io::AsyncWriteExt;
 use tokio::sync::mpsc::{UnboundedReceiver, UnboundedSender};
 use tokio::sync::RwLock;
+use crate::db::dbcore::Database;
 
 pub async fn download_files(
     links: &[String],
     save_to: &Path,
     client: reqwest::Client,
     overwrite_files: bool,
+    db: Option<Arc<Database>>,
     common_tx: Arc<RwLock<UnboundedSender<Command>>>,
     control_rx: Arc<RwLock<UnboundedReceiver<Command>>>,
 )
@@ -32,6 +34,12 @@ pub async fn download_files(
             ).await?;
 
         if matches!(res, Some(Command::Stop)) { return Ok(res) }
+        if let Some(db) = db.clone() {
+            db.write_file_history(link).await;
+            if let Ok(tx) = common_tx.try_read() {
+                tx.send(Command::Success)?;
+            }
+        }
     }
     Ok(None)
 }

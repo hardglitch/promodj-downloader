@@ -71,7 +71,11 @@ async fn handle_connection(mut stream: TcpStream) {
 
         // --- LOGIC 1: Check for Direct File Download Request (Has a trailing filename) ---
         if request.starts_with("GET") && request.contains("/mixes/house") &&
-           extensions().iter().any(|&ext| request.contains(&format!(".{ext}")))
+           extensions().iter().any(|&ext|
+               request.contains(&format!("%2E{ext}"))
+                    ||
+               request.contains(&format!(".{ext}"))
+           )
         {
             // We need to isolate the path part: /mixes/house/FILENAME.ext
 
@@ -134,7 +138,6 @@ async fn handle_connection(mut stream: TcpStream) {
 async fn handle_file_download(mut stream: TcpStream, filename: &str) {
     let filename = percent_decode(filename.as_bytes()).decode_utf8().unwrap();
     let full_path = Path::new(MUSIC_DIRECTORY).join(filename.to_string());
-    log!("{}", full_path.to_str().unwrap());
     let mut file = tokio::fs::File::open(full_path).await.unwrap();
     let mut chunk = [0u8; BUFFER_SIZE];
 

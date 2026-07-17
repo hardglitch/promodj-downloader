@@ -1,7 +1,7 @@
 use crate::data::consts::{FORMS, GENRES};
 use crate::data::dictionary;
 use crate::data::dictionary::{hints, inscriptions, Lang};
-use crate::db::dbcore::{Database, DB_NAME};
+use crate::db::dbcore::Database;
 use crate::log;
 use crate::logic::file::download_files;
 use crate::logic::proxy::ProxyType;
@@ -31,10 +31,13 @@ enum Color {
     White,
 }
 impl MyApp {
-    pub fn new(ctx: &CreationContext) -> Self {
+    pub fn new(ctx: &CreationContext, db: Arc<Database>) -> Self {
 
         // Default settings of the App
         let mut app = Self::default();
+
+        // Set db
+        app.db = Some(db);
 
         // Apply a custom font
         let mut fonts = FontDefinitions::default();
@@ -44,15 +47,7 @@ impl MyApp {
             .into_iter().for_each(|font| { font.insert(0, "font".to_owned()); });
         ctx.egui_ctx.set_fonts(fonts);
 
-        // Try open history.db
-        let (tx, mut rx) = tokio::sync::oneshot::channel::<Database>();
-        tokio::spawn(async move {
-            if let Some(db) = Database::create_or_open(DB_NAME).await {
-                db.create_history_db().await;
-                if tx.send(db).is_err() { log!("Database: MPSC channel send failed"); }
-            }
-        });
-        app.db = rx.try_recv().ok();
+        // Last days for Header
         app.last_download_days = Self::last_download_days().unwrap_or_default();
 
         // Try load the proxy settings
@@ -64,7 +59,7 @@ impl MyApp {
         app
     }
 
-    pub(super) fn save_settings(&mut self) {
+    pub(super) fn save_settings(&self) {
         let mut config = Ini::new();
 
         config.set("default", "LastDownload", Some(self.last_download.to_string()));
@@ -83,6 +78,7 @@ impl MyApp {
         if let Ok(quantity) = self.quantity.parse::<u16>() {
             config.set("default", "Quantity", Some(quantity.to_string()));
         }
+        config.set("default", "Proxy", Some(self.use_proxy.to_string()));
 
         if let Err(e) = config.write("settings.ini") { log!("Config: {e}"); }
     }
@@ -565,12 +561,12 @@ impl MyApp {
                 file_history,
                 lossless,
                 client: client.clone(),
-                db: &db,
+                db: db.clone(),
                 common_tx: common_tx.clone(),
             };
 
             let send = |msg: &str| {
-                if let Ok(tx) = common_tx.try_write() {
+                if let Ok(tx) = common_tx.try_read() {
                     let _ = tx.send(Command::Message(msg.to_owned()));
                 }
             };
@@ -582,7 +578,7 @@ impl MyApp {
                             &save_to,
                             client.clone(),
                             overwrite_files,
-                            &db,
+                            db,
                             common_tx.clone(),
                             control_rx.clone(),
                           ).await;
@@ -615,7 +611,7 @@ impl MyApp {
                 }
             }
 
-            if let Ok(tx) = common_tx.try_write() {
+            if let Ok(tx) = common_tx.try_read() {
                 let _ = tx.send(Command::Stop);
             }
         });
@@ -635,7 +631,7 @@ impl MyApp {
                 .on_hover_cursor(CursorIcon::PointingHand)
                 .on_hover_text(text)
                 .clicked()
-                &&
+                    &&
                 let Ok(tx) = self.control_tx.try_read()
             {
                 if self.dl_paused {
@@ -651,7 +647,7 @@ impl MyApp {
         }
     }
 
-    pub(super) fn common_receiver(&mut self, ui: &mut Ui) {
+    pub(super) fn common_receiver(&mut self) {
         if let Ok(mut cmd) = self.common_rx.try_write() &&
            let Ok(cmd) = cmd.try_recv()
         {
@@ -659,18 +655,20 @@ impl MyApp {
                 Command::Message(msg) => {
                     self.show_progress = false;
                     self.message = Some(msg);
-                    ui.request_repaint();
                 }
                 Command::Progress(progress, cur, total) => {
                     self.show_progress = true;
                     self.progress = progress;
                     self.current = cur;
                     self.total = total;
-                    ui.request_repaint();
                 }
                 Command::Stop => {
                     self.dl_button_name = inscriptions::download;
                     self.dl_started = false;
+                }
+                Command::Success => {
+                    self.last_download_days = 0;
+                    self.save_settings();
                 }
                 _ => {}
             }

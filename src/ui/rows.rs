@@ -149,6 +149,7 @@ impl MyApp {
                 else if let Some(msg) = &self.message {
                    ui.label(msg);
                 }
+                ui.request_repaint();
             });
         });
     }
