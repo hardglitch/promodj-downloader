@@ -116,10 +116,14 @@ impl MyApp {
             ui.vertical(|ui| {
                 ui.set_width(50.);
                 ui.with_layout(Layout::centered_and_justified(egui::Direction::TopDown), |ui| {
-                    ui
+                    if ui
                         .toggle_value(&mut self.use_proxy, "Proxy")
                         .on_hover_cursor(CursorIcon::PointingHand)
-                        .on_hover_text(hints::proxy(self.lang));
+                        .on_hover_text(hints::proxy(self.lang))
+                        .clicked()
+                    {
+                        self.save_settings();
+                    }
                 });
             });
 

@@ -367,8 +367,6 @@ impl MyApp {
                 self.proxy_window_pos.x = pos.x - 390.0;
                 self.proxy_window_pos.y = pos.y + 10.0;
                 self.show_proxy_window = !self.show_proxy_window;
-
-                self.save_settings();
             }
         }
     }
