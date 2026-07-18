@@ -27,7 +27,6 @@ use std::time::UNIX_EPOCH;
 use strum::IntoEnumIterator;
 use crate::ui::button::ButtonState;
 
-#[allow(dead_code)]
 enum Color {
     LightGray,
     White,
@@ -166,22 +165,22 @@ impl MyApp {
         self.qr_eth = Some(th);
 
         let img = include_bytes!("../../assets/save.ico");
-        let color_image = Self::process_image(img, Color::White)?;
+        let color_image = Self::process_image(img, Color::LightGray)?;
         let th = ctx.egui_ctx.load_texture("save_tx", color_image, TextureOptions::default());
         self.save_tx = Some(th);
 
         let img = include_bytes!("../../assets/pause.ico");
-        let color_image = Self::process_image(img, Color::White)?;
+        let color_image = Self::process_image(img, Color::LightGray)?;
         let th = ctx.egui_ctx.load_texture("pause_tx", color_image, TextureOptions::default());
         self.pause_tx = Some(th);
 
         let img = include_bytes!("../../assets/play.ico");
-        let color_image = Self::process_image(img, Color::White)?;
+        let color_image = Self::process_image(img, Color::LightGray)?;
         let th = ctx.egui_ctx.load_texture("play_tx", color_image, TextureOptions::default());
         self.play_tx = Some(th);
 
         let img = include_bytes!("../../assets/gear.png");
-        let color_image = Self::process_image(img, Color::White)?;
+        let color_image = Self::process_image(img, Color::LightGray)?;
         let th = ctx.egui_ctx.load_texture("settings_tx", color_image, TextureOptions::default());
         self.proxy_settings_tx = Some(th);
 
