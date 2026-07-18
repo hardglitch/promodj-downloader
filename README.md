@@ -13,4 +13,4 @@ This application provides a **convenient way** to download tracks, mixes, and li
 *   New **proxy** feature
 *   **Multi-OS** support
 
-**Enjoy!**
+❤️ **Enjoy!**
