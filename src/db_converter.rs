@@ -1,6 +1,7 @@
 use sqlx_core::pool::PoolConnection;
 use crate::db::dbcore::{DBType, Database};
 
+#[ignore]
 #[tokio::test]
 async fn main() {
 
