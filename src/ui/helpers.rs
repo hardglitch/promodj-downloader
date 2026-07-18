@@ -27,6 +27,7 @@ use std::time::UNIX_EPOCH;
 use strum::IntoEnumIterator;
 use crate::ui::button::ButtonState;
 
+#[allow(dead_code)]
 enum Color {
     LightGray,
     White,

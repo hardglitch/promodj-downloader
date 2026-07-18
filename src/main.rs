@@ -8,6 +8,8 @@ mod logic;
 mod db;
 #[cfg(test)]
 mod test_server;
+#[cfg(test)]
+mod db_converter;
 
 use ui::MyApp;
 use eframe::{egui::ViewportBuilder, NativeOptions};
