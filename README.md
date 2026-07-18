@@ -6,9 +6,9 @@ This application provides a **convenient way** to download tracks, mixes, and li
 
 
 ✨ **Key Features:**
-*   The App is **completely portable** (all-inclusive)
+*   **Completely portable** (all-inclusive)
 *   **User-friendly** interface
-*   Completely reworked and rewrited to **Rust** code
+*   Completely reworked and rewritten into **Rust** code.
 *   More **site-friendly** than older versions
 *   New **proxy** feature
 *   **Multi-OS** support
