@@ -2,7 +2,7 @@ use crate::log;
 use regex::Regex;
 use std::io::Write;
 use std::sync::LazyLock;
-use std::time::UNIX_EPOCH;
+use std::time::{Duration, SystemTimeError, UNIX_EPOCH};
 
 // Remove forbidden symbols
 static RE1: LazyLock<Regex> = LazyLock::new(|| {
@@ -35,6 +35,12 @@ pub fn new_filename(old_filename: &str) -> Option<String> {
     let ts = std::time::SystemTime::now().duration_since(UNIX_EPOCH).ok()?.as_secs();
     let new_filename = format!("{name}-{ts}.{ext}");
     Some(new_filename)
+}
+pub fn timestamp() -> u64 {
+    match std::time::SystemTime::now().duration_since(UNIX_EPOCH) {
+        Ok(ts) => ts.as_secs(),
+        Err(e) => { log!("{e}"); 0 }
+    }
 }
 
 

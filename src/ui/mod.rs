@@ -47,7 +47,7 @@ pub struct MyApp {
     pub lang: Lang,
     save_to: PathBuf,
     save_tx: Option<TextureHandle>,
-    last_download: usize,
+    last_download: u64,
 
     // Wallets
     qr_btc: Option<TextureHandle>,

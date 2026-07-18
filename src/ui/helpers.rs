@@ -6,7 +6,7 @@ use crate::log;
 use crate::logic::file::download_files;
 use crate::logic::proxy::ProxyType;
 use crate::logic::search::{Link, LinkParams};
-use crate::logic::Command;
+use crate::logic::{tools, Command};
 use crate::ui::MyApp;
 use configparser::ini::Ini;
 use eframe::emath::{vec2, Align, Rect};
@@ -89,7 +89,7 @@ impl MyApp {
 
             // Last download
             if let Ok(Some(ts)) = config.getuint("default", "LastDownload") {
-                self.last_download = ts as usize;
+                self.last_download = ts;
             }
 
             // Language
@@ -730,6 +730,7 @@ impl MyApp {
                 }
                 Command::Success => {
                     self.last_download_days = 0;
+                    self.last_download = tools::timestamp();
                     self.save_settings();
                 }
                 _ => {}

@@ -20,6 +20,8 @@ pub async fn download_files(
 )
     -> anyhow::Result<Option<Command>>
 {
+    let _ = tokio::fs::create_dir(save_to).await;
+
     let total_links = links.len();
     for (link_number, link) in links.iter().enumerate() {
         let mut file = DlFile::new(link, save_to)?;
