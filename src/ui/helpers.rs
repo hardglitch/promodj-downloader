@@ -1,4 +1,4 @@
-use crate::data::consts::{FORMS, GENRES};
+use crate::data::consts::{FLASH_DURATION_FRAMES, FORMS, GENRES};
 use crate::data::dictionary;
 use crate::data::dictionary::{hints, inscriptions, Lang};
 use crate::db::dbcore::Database;
@@ -25,10 +25,13 @@ use std::str::FromStr;
 use std::sync::Arc;
 use std::time::UNIX_EPOCH;
 use strum::IntoEnumIterator;
+use crate::ui::button::ButtonState;
 
+#[allow(dead_code)]
 enum Color {
     LightGray,
     White,
+    Custom(u8, u8, u8),
 }
 impl MyApp {
     pub fn new(ctx: &CreationContext, db: Arc<Database>) -> Self {
@@ -153,16 +156,12 @@ impl MyApp {
 
     fn load_textures(&mut self, ctx: &CreationContext) -> ImageResult<()> {
         let img = include_bytes!("../../assets/qr_bitcoin.png");
-        let image = image::load_from_memory(img)?.into_rgba8();
-        let size = [image.width() as usize, image.height() as usize];
-        let color_image = ColorImage::from_rgba_unmultiplied(size, &image.into_raw());
+        let color_image = Self::process_image(img, Color::White)?;
         let th = ctx.egui_ctx.load_texture("qr_btc", color_image, TextureOptions::default());
         self.qr_btc = Some(th);
 
         let img = include_bytes!("../../assets/qr_ethereum.png");
-        let image = image::load_from_memory(img)?.into_rgba8();
-        let size = [image.width() as usize, image.height() as usize];
-        let color_image = ColorImage::from_rgba_unmultiplied(size, &image.into_raw());
+        let color_image = Self::process_image(img, Color::White)?;
         let th = ctx.egui_ctx.load_texture("qr_eth", color_image, TextureOptions::default());
         self.qr_eth = Some(th);
 
@@ -172,12 +171,12 @@ impl MyApp {
         self.save_tx = Some(th);
 
         let img = include_bytes!("../../assets/pause.ico");
-        let color_image = Self::process_image(img, Color::LightGray)?;
+        let color_image = Self::process_image(img, Color::White)?;
         let th = ctx.egui_ctx.load_texture("pause_tx", color_image, TextureOptions::default());
         self.pause_tx = Some(th);
 
         let img = include_bytes!("../../assets/play.ico");
-        let color_image = Self::process_image(img, Color::LightGray)?;
+        let color_image = Self::process_image(img, Color::White)?;
         let th = ctx.egui_ctx.load_texture("play_tx", color_image, TextureOptions::default());
         self.play_tx = Some(th);
 
@@ -187,17 +186,6 @@ impl MyApp {
         self.proxy_settings_tx = Some(th);
 
         Ok(())
-    }
-
-    fn glow_effect(ui: &mut Ui, response: &Response, texture_id: TextureId) {
-        let is_hovered = response.hovered();
-        let final_color = if is_hovered { Color32::WHITE } else { Color32::GRAY };
-        ui.painter().image(
-            texture_id,
-            response.rect,
-            Rect::from_min_max(pos2(0.0, 0.0), pos2(1.0, 1.0)),
-            final_color,
-        );
     }
 
     fn process_image(img: &[u8], color: Color) -> Result<ColorImage, ImageError> {
@@ -221,6 +209,7 @@ impl MyApp {
                     let new_pixel = match color {
                         Color::LightGray => Rgba([200, 200, 200, alpha]),
                         Color::White => Rgba([255, 255, 255, alpha]),
+                        Color::Custom(r, g, b) => Rgba([r, g, b, alpha]),
                     };
                     processed_image.put_pixel(x, y, new_pixel);
                 }
@@ -231,6 +220,64 @@ impl MyApp {
         let size = [processed_image.width() as usize, processed_image.height() as usize];
         let color_image = ColorImage::from_rgba_unmultiplied(size, &processed_image.into_raw());
         Ok(color_image)
+    }
+    fn glow_effect(ui: &mut Ui, response: &Response, texture_id: TextureId) {
+        let is_hovered = response.hovered();
+
+        let final_color =
+            if is_hovered { Color32::from_rgb(210, 210, 210) }
+            else { Color32::GRAY };
+
+        ui.painter().image(
+            texture_id,
+            response.rect,
+            Rect::from_min_max(pos2(0.0, 0.0), pos2(1.0, 1.0)),
+            final_color,
+        );
+    }
+    pub(super) fn enable_flash(&mut self, id: egui::Id) {
+        let button_state = ButtonState::new();
+        self.buttons
+            .entry(id)
+            .and_modify(|bs| bs.current_flash_frame = FLASH_DURATION_FRAMES)
+            .or_insert(button_state);
+    }
+    pub(super) fn flash_effect(&mut self, ui: &mut Ui, response: &Response, texture_id: TextureId) {
+        if let Some(bs) = self.buttons.get_mut(&response.id) {
+            if bs.current_flash_frame > 0 { bs.current_flash_frame -= 1; } else { return; }
+
+            let opacity = bs.current_flash_frame as f32 / FLASH_DURATION_FRAMES as f32;
+            let top_color = Color32::WHITE;
+            let bottom_color =
+                if response.hovered() { Color32::from_rgb(210, 210, 210) }
+                else { Color32::GRAY };
+
+            // let current_color = bottom_color + (top_color - bottom_color) * opacity; ->
+            // -> let current_color = bottom_color * (1 - opacity) + top_color * opacity;
+            let k = 1. - opacity;
+            let p1 = (
+                (bottom_color.r() as f32 * k) as u8,
+                (bottom_color.g() as f32 * k) as u8,
+                (bottom_color.b() as f32 * k) as u8,
+            );
+            let p2 = (
+                (top_color.r() as f32 * opacity) as u8,
+                (top_color.g() as f32 * opacity) as u8,
+                (top_color.b() as f32 * opacity) as u8,
+            );
+            let current_color = Color32::from_rgb(
+                p1.0 + p2.0,
+                p1.1 + p2.1,
+                p1.2 + p2.2,
+            );
+
+            ui.painter().image(
+                texture_id,
+                response.rect,
+                Rect::from_min_max(pos2(0.0, 0.0), pos2(1.0, 1.0)),
+                current_color,
+            );
+        }
     }
 
     pub(super) fn last_download_days() -> Option<u64> {
@@ -294,31 +341,30 @@ impl MyApp {
             .fixed_pos(self.qr_pos)
             .show(ui, |ui| {
                 ui.with_layout(Layout::left_to_right(Align::Center), |ui| {
-                    if let Some(th_btc) = &self.qr_btc &&
-                       let Some(th_eth) = &self.qr_eth
-                    {
-                        ui.vertical(|ui| {
-                            let img = Image::new(SizedTexture::new(th_btc.id(), vec2(150.0, 150.0)));
-                            let wallet = "bc1qfyt84p8t85pg6597882cr7p04ank2263t7asa6";
-                            self.copy_to_clipboard(img, wallet, ui);
+                    let th_btc_id = if let Some(t) = &self.qr_btc { t.id() } else { return };
+                    let th_eth_id = if let Some(t) = &self.qr_eth { t.id() } else { return };
 
-                            ui.horizontal(|ui| {
-                                ui.add_space(60.);
-                                ui.colored_label(Color32::ORANGE, "bitcoin");
-                            });
+                    ui.vertical(|ui| {
+                        let img = Image::new(SizedTexture::new(th_btc_id, vec2(150.0, 150.0)));
+                        let wallet = "bc1qfyt84p8t85pg6597882cr7p04ank2263t7asa6";
+                        self.copy_to_clipboard(img, th_btc_id, wallet, ui);
+
+                        ui.horizontal(|ui| {
+                            ui.add_space(60.);
+                            ui.colored_label(Color32::ORANGE, "bitcoin");
                         });
+                    });
 
-                        ui.vertical(|ui| {
-                            let img = Image::new(SizedTexture::new(th_eth.id(), vec2(150.0, 150.0)));
-                            let wallet = "0x1991F455084DfF493AC13D0473d92b47A80403F9";
-                            self.copy_to_clipboard(img, wallet, ui);
+                    ui.vertical(|ui| {
+                        let img = Image::new(SizedTexture::new(th_eth_id, vec2(150.0, 150.0)));
+                        let wallet = "0x1991F455084DfF493AC13D0473d92b47A80403F9";
+                        self.copy_to_clipboard(img, th_eth_id, wallet, ui);
 
-                            ui.horizontal(|ui| {
-                                ui.add_space(50.);
-                                ui.colored_label(Color32::from_rgb(157,167,218), "ethereum");
-                            });
+                        ui.horizontal(|ui| {
+                            ui.add_space(50.);
+                            ui.colored_label(Color32::from_rgb(157,167,218), "ethereum");
                         });
-                    }
+                    });
                 });
             });
 
@@ -337,13 +383,18 @@ impl MyApp {
             }
         });
     }
-    fn copy_to_clipboard(&self, img: Image, text: &str, ui: &mut Ui) {
-        if ui
-            .add(img.sense(Sense::click()))
+    fn copy_to_clipboard(&mut self, img: Image, texture_id: TextureId, text: &str, ui: &mut Ui) {
+        let button = ui.add(img.sense(Sense::click()));
+        Self::glow_effect(ui, &button, texture_id);
+        self.flash_effect(ui, &button, texture_id);
+
+        let id = button.id;
+        if button
             .on_hover_cursor(CursorIcon::PointingHand)
             .on_hover_text(hints::copy(self.lang))
             .clicked()
         {
+            self.enable_flash(id);
             ui.copy_text(text.to_string());
         };
     }
@@ -631,9 +682,10 @@ impl MyApp {
                 else { hints::pause(self.lang) };
 
             let text = RichText::new(hint);
+            let button = ui.add(img.sense(Sense::click()));
+            Self::glow_effect(ui, &button, tx_id.id());
 
-            if ui
-                .add(img.sense(Sense::click()))
+            if button
                 .on_hover_cursor(CursorIcon::PointingHand)
                 .on_hover_text(text)
                 .clicked()

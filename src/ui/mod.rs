@@ -1,5 +1,6 @@
 mod helpers;
 mod rows;
+mod button;
 
 use crate::data::consts::{FORMS, GENRES};
 use crate::data::dictionary;
@@ -7,8 +8,10 @@ use crate::data::dictionary::Lang;
 use crate::db::dbcore::Database;
 use crate::logic::proxy::ProxyType;
 use crate::logic::Command;
+use crate::ui::button::ButtonState;
 use eframe::{App, Frame};
 use egui::{Pos2, Rect, TextureHandle, Ui};
+use std::collections::HashMap;
 use std::path::PathBuf;
 use std::sync::Arc;
 use tokio::sync::mpsc::{UnboundedReceiver, UnboundedSender};
@@ -74,6 +77,8 @@ pub struct MyApp {
     pub control_tx: Arc<RwLock<UnboundedSender<Command>>>,
     pub control_rx: Arc<RwLock<UnboundedReceiver<Command>>>,
     pub client: reqwest::Client,
+
+    buttons: HashMap<egui::Id, ButtonState>,
 }
 impl Default for MyApp {
     fn default() -> Self {
@@ -132,6 +137,8 @@ impl Default for MyApp {
             control_tx: Arc::new(RwLock::new(tx2)),
             control_rx: Arc::new(RwLock::new(rx2)),
             client: reqwest::Client::new(),
+
+            buttons: Default::default(),
         }
     }
 }

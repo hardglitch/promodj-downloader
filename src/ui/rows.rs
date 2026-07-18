@@ -162,13 +162,14 @@ impl MyApp {
         ui.with_layout(Layout::right_to_left(Align::Max), |ui| {
             let legend = self.dl_button_name;
             let button_text = egui::RichText::new(legend(self.lang)).size(24.0);
-            let button = egui::Button::new(button_text)
-                .min_size(egui::vec2(170., 30.));
+            let response = ui.add(egui::Button::new(button_text)
+                .min_size(egui::vec2(170., 30.)));
 
-            if ui.add(button)
+            let is_clicked = response
                 .on_hover_cursor(CursorIcon::PointingHand)
-                .clicked()
-            {
+                .clicked();
+
+            if is_clicked {
                 self.download();
             }
             if self.dl_started { self.pause(ui); }
