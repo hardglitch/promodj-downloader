@@ -164,9 +164,9 @@ pub mod hints {
     }
     pub const fn ui_scale<'a>(lang: Lang) -> &'a str {
         match lang {
-            Lang::En => "Scale. You should restart the application to apply the changes",
-            Lang::Ru => "Масштабирование. Нужно перезапустить приложение для применения настроек",
-            Lang::Uk => "Масштабування. Вам слід перезапустити програму, щоб застосувати зміни",
+            Lang::En => "Scale",
+            Lang::Ru => "Масштабирование",
+            Lang::Uk => "Масштабування",
         }
     }
 }
