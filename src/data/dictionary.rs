@@ -208,7 +208,7 @@ pub mod inscriptions {
 
     pub const fn window_title<'a>(lang: Lang) -> &'a str {
         match lang {
-            Lang::En => "Last download was _ days ago",
+            Lang::En => "The last download was _ days ago",
             Lang::Ru => "Последняя загрузка была _ дней назад",
             Lang::Uk => "Останнє завантаження було _ днів тому",
         }
