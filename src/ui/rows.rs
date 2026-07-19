@@ -2,7 +2,7 @@ use crate::data::consts::{FORMS, GENRES, VERSION};
 use crate::data::dictionary::{hints, inscriptions};
 use crate::ui::MyApp;
 use eframe::emath::Align;
-use egui::{ComboBox, CursorIcon, Layout, Ui};
+use egui::{ComboBox, CursorIcon, Layout, Ui, Vec2};
 
 impl MyApp {
     pub(super) fn main_row(&mut self, ui: &mut Ui) {
@@ -52,7 +52,7 @@ impl MyApp {
 
     pub(super) fn toggles_row(&mut self, ui: &mut Ui) {
         ui.horizontal(|ui| {
-            ui.add_space(10.);
+            ui.add_space(20.);
 
             ui.vertical(|ui| {
                 ui.set_width(60.);
@@ -116,19 +116,20 @@ impl MyApp {
             ui.vertical(|ui| {
                 ui.set_width(50.);
                 ui.with_layout(Layout::centered_and_justified(egui::Direction::TopDown), |ui| {
-                    if ui
-                        .toggle_value(&mut self.use_proxy, "Proxy")
-                        .on_hover_cursor(CursorIcon::PointingHand)
-                        .on_hover_text(hints::proxy(self.lang))
-                        .clicked()
-                    {
-                        self.save_settings();
-                    }
-                });
-            });
+                    ui.horizontal(|ui| {
+                        ui.style_mut().spacing.item_spacing = Vec2::default();
 
-            ui.vertical(|ui| {
-                self.proxy_settings(ui);
+                        if ui
+                            .toggle_value(&mut self.use_proxy, "Proxy")
+                            .on_hover_cursor(CursorIcon::PointingHand)
+                            .on_hover_text(hints::proxy(self.lang))
+                            .clicked()
+                        {
+                            self.save_settings();
+                        }
+                        self.proxy_settings(ui);
+                    });
+                });
             });
         });
 
@@ -180,13 +181,23 @@ impl MyApp {
         ui.with_layout(Layout::bottom_up(Align::Center), |ui| {
             ui.horizontal(|ui| {
                 ui.with_layout(Layout::left_to_right(Align::Min), |ui| {
+                    ui.style_mut().spacing.item_spacing = Vec2::default();
+
                     ui.label(VERSION);
+                    ui.add_space(5.0);
+
                     ui
                         .hyperlink_to("hardglitch", "https://github.com/hardglitch")
                         .on_hover_text("https://github.com/hardglitch");
+                    ui.add_space(5.0);
+
                     self.donate(ui);
                     if self.show_qr { self.donate_popup(ui); }
+                    ui.add_space(5.0);
+
                     self.lang_switcher(ui);
+                    ui.add_space(5.0);
+
                     self.ui_scale(ui);
                 });
             });

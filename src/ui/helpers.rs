@@ -182,10 +182,15 @@ impl MyApp {
         let th = ctx.egui_ctx.load_texture("play_tx", color_image, TextureOptions::default());
         self.play_tx = Some(th);
 
-        let img = include_bytes!("../../assets/gear.png");
+        let img = include_bytes!("../../assets/gear.ico");
         let color_image = Self::process_image(img, Color::LightGray)?;
         let th = ctx.egui_ctx.load_texture("settings_tx", color_image, TextureOptions::default());
         self.proxy_settings_tx = Some(th);
+
+        let img = include_bytes!("../../assets/magnifying-glass.ico");
+        let color_image = Self::process_image(img, Color::LightGray)?;
+        let th = ctx.egui_ctx.load_texture("loupe_tx", color_image, TextureOptions::default());
+        self.loupe_tx = Some(th);
 
         Ok(())
     }
@@ -397,6 +402,13 @@ impl MyApp {
     }
 
     pub(super) fn ui_scale(&mut self, ui: &mut Ui) {
+        if let Some(img) = &self.loupe_tx {
+            ui.add(
+                Image::new(SizedTexture::new(img, vec2(18., 18.)))
+            );
+        }
+        ui.add_space(2.);
+
         let state_before = self.ui_scale_ui;
         ComboBox::new("ui_scale", "")
             .selected_text(self.ui_scale_ui)
@@ -416,7 +428,7 @@ impl MyApp {
 
     pub(super) fn proxy_settings(&mut self, ui: &mut Ui) {
         if let Some(tx_id) = &self.proxy_settings_tx {
-            let img = Image::new(SizedTexture::new(tx_id.id(), vec2(16., 16.)));
+            let img = Image::new(SizedTexture::new(tx_id.id(), vec2(18., 18.)));
             let text = RichText::new(hints::proxy_settings(self.lang));
 
             let button = ui.add(img.sense(Sense::click()));

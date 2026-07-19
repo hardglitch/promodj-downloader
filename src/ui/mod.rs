@@ -77,8 +77,10 @@ pub struct MyApp {
     pub control_tx: Arc<RwLock<UnboundedSender<Command>>>,
     pub control_rx: Arc<RwLock<UnboundedReceiver<Command>>>,
     pub client: reqwest::Client,
-    pub ui_scale: f32,
-    pub ui_scale_ui: &'static str,
+
+    ui_scale: f32,
+    ui_scale_ui: &'static str,
+    loupe_tx: Option<TextureHandle>,
 
     buttons: HashMap<egui::Id, ButtonState>,
 }
@@ -139,8 +141,10 @@ impl Default for MyApp {
             control_tx: Arc::new(RwLock::new(tx2)),
             control_rx: Arc::new(RwLock::new(rx2)),
             client: reqwest::Client::new(),
+
             ui_scale: 1.0,
             ui_scale_ui: UI_SCALE_UI[0],
+            loupe_tx: None,
 
             buttons: Default::default(),
         }
