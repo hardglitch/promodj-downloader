@@ -65,7 +65,7 @@ impl MyApp {
         config.set("default", "LastDownload", Some(self.last_download.to_string()));
         config.set("default", "Language", Some(self.lang.encode().to_owned()));
 
-        let s = self.save_to.clone().into_string().ok();
+        let s = self.save_to.clone().into_os_string().into_string().ok();
         config.set("default", "DownloadDirectory", s);
 
         config.set("default", "Genre", Some(self.genre.to_owned()));
@@ -248,7 +248,7 @@ impl MyApp {
         if let Some(bs) = self.buttons.get_mut(&response.id) {
             if bs.current_flash_frame > 0 { bs.current_flash_frame -= 1; } else { return; }
 
-            let opacity = bs.current_flash_frame as f32 / FLASH_DURATION_FRAMES as f32;
+            let opacity = 1. - bs.current_flash_frame as f32 / FLASH_DURATION_FRAMES as f32;
             let top_color = Color32::WHITE;
             let bottom_color =
                 if response.hovered() { Color32::from_rgb(210, 210, 210) }
@@ -257,27 +257,39 @@ impl MyApp {
             // let current_color = bottom_color + (top_color - bottom_color) * opacity; ->
             // -> let current_color = bottom_color * (1 - opacity) + top_color * opacity;
             let k = 1. - opacity;
-            let p1 = (
-                (bottom_color.r() as f32 * k) as u8,
-                (bottom_color.g() as f32 * k) as u8,
-                (bottom_color.b() as f32 * k) as u8,
-            );
-            let p2 = (
-                (top_color.r() as f32 * opacity) as u8,
-                (top_color.g() as f32 * opacity) as u8,
-                (top_color.b() as f32 * opacity) as u8,
-            );
-            let current_color = Color32::from_rgb(
-                p1.0 + p2.0,
-                p1.1 + p2.1,
-                p1.2 + p2.2,
-            );
+
+            #[cfg(target_feature = "sse2")]
+            let current_color = || {
+                let p1 = crate::utils::simd::simd_multiply_color(&bottom_color, k);
+                let p2 = crate::utils::simd::simd_multiply_color(&top_color, opacity);
+                crate::utils::simd::simd_add_color(&p1, &p2)
+            };
+
+            #[cfg(not(target_feature = "sse2"))]
+            let current_color = || {
+                    let p1 = (
+                        (bottom_color.r() as f32 * k) as u8,
+                        (bottom_color.g() as f32 * k) as u8,
+                        (bottom_color.b() as f32 * k) as u8,
+                    );
+                    let p2 = (
+                        (top_color.r() as f32 * opacity) as u8,
+                        (top_color.g() as f32 * opacity) as u8,
+                        (top_color.b() as f32 * opacity) as u8,
+                    );
+                    Color32::from_rgb(
+                        p1.0 + p2.0,
+                        p1.1 + p2.1,
+                        p1.2 + p2.2,
+                    )
+                };
+
 
             ui.painter().image(
                 texture_id,
                 response.rect,
                 Rect::from_min_max(pos2(0.0, 0.0), pos2(1.0, 1.0)),
-                current_color,
+                current_color(),
             );
         }
     }
