@@ -1,4 +1,4 @@
-use crate::data::consts::{FLASH_DURATION_FRAMES, FORMS, GENRES};
+use crate::data::consts::{FLASH_DURATION_FRAMES, FORMS, GENRES, UI_SCALE_UI};
 use crate::data::dictionary;
 use crate::data::dictionary::{hints, inscriptions, Lang};
 use crate::db::dbcore::Database;
@@ -39,7 +39,6 @@ impl MyApp {
         // Default settings of the App
         let mut app = MyApp {
             db: Some(db),
-            last_download_days: Self::last_download_days().unwrap_or_default(),
             ..Default::default()
         };
 
@@ -80,33 +79,34 @@ impl MyApp {
             config.set("default", "Quantity", Some(quantity.to_string()));
         }
         config.set("default", "Proxy", Some(self.use_proxy.to_string()));
+        config.set("default", "Scale", Some(self.ui_scale.to_string()));
 
         if let Err(e) = config.write("settings.ini") { log!("Config: {e}"); }
     }
     fn load_settings(&mut self) {
         let mut config = Ini::new();
         if config.load("settings.ini").is_ok() {
+            if let Ok(Some(last_ts)) = config.getuint("default", "LastDownload") {
+                self.last_download = last_ts;
 
-            // Last download
-            if let Ok(Some(ts)) = config.getuint("default", "LastDownload") {
-                self.last_download = ts;
+                if last_ts > 0 &&
+                   let Ok(ts) = std::time::SystemTime::now().duration_since(UNIX_EPOCH)
+                {
+                    let days = ts.as_secs().saturating_sub(last_ts).saturating_div(3600 * 24);
+                    self.last_download_days = days;
+                }
+
             }
-
-            // Language
             if let Some(lng) = config.get("default", "Language") &&
                let Some(lang) = Lang::decode(&lng)
             {
                 self.lang = lang;
             }
-
-            // Download directory
             if let Some(dir) = config.get("default", "DownloadDirectory") &&
                let Ok(path) = PathBuf::from_str(&dir)
             {
                 self.save_to = path;
             }
-
-            // Genre
             if let Some(genre) = config.get("default", "Genre") &&
                let Some(g) = GENRES.iter().find_map(|(name, _)| {
                    if name == &genre { Some(name) } else { None }
@@ -114,44 +114,46 @@ impl MyApp {
             {
                 self.genre = g;
             }
-
-            // Form
             if let Some(form) = config.get("default", "Form") &&
                let Some(form_) = FORMS.iter().find(|&f| f == &form)
             {
                 self.form = form_;
             }
-
-            // Lossless
             if let Ok(Some(ls)) = config.getbool("default", "Lossless") {
                 self.lossless = ls;
             }
-
-            // Period
             if let Ok(Some(p)) = config.getbool("default", "Period") {
                 self.period = p;
             }
-
-            // Overwrite files
             if let Ok(Some(of)) = config.getbool("default", "OverwriteFiles") {
                 self.overwrite_files = of;
             }
-
-            // File history
             if let Ok(Some(fh)) = config.getbool("default", "FileHistory") {
                 self.file_history = fh;
             }
-
-            // Quantity
             if let Ok(Some(q)) = config.getuint("default", "Quantity") {
                 self.quantity = (q as usize).to_string();
             }
-
-            // Proxy
             if let Ok(Some(p)) = config.getbool("default", "Proxy") {
                 self.use_proxy = p;
             }
+            if let Ok(Some(s)) = config.getfloat("default", "Scale") {
+                self.ui_scale = s as f32;
+                self.ui_scale_ui = match self.ui_scale {
+                    1.00 => UI_SCALE_UI[0],
+                    1.25 => UI_SCALE_UI[1],
+                    1.50 => UI_SCALE_UI[2],
+                    1.75 => UI_SCALE_UI[3],
+                    2.00 => UI_SCALE_UI[4],
+                    _ => UI_SCALE_UI[0]
+                }
+            }
         }
+    }
+
+    pub(super) fn window_title(&mut self) -> String {
+        let template = inscriptions::window_title(self.lang);
+        template.replace('_', &self.last_download_days.to_string())
     }
 
     fn load_textures(&mut self, ctx: &CreationContext) -> ImageResult<()> {
@@ -280,23 +282,6 @@ impl MyApp {
         }
     }
 
-    pub(super) fn last_download_days() -> Option<u64> {
-        let mut config = Ini::new();
-        if config.load("settings.ini").is_ok() &&
-            let Ok(Some(last_ts)) = config.getuint("default", "LastDownload") &&
-            last_ts > 0 &&
-            let Ok(ts) = std::time::SystemTime::now().duration_since(UNIX_EPOCH)
-        {
-            let days = ts.as_secs().saturating_sub(last_ts).saturating_div(3600 * 24);
-            return Some(days)
-        }
-        None
-    }
-    pub(super) fn window_title(&mut self) -> String {
-        let template = inscriptions::window_title(self.lang);
-        template.replace('_', &self.last_download_days.to_string())
-    }
-
     pub(super) fn lang_switcher(&mut self, ui: &mut Ui) {
         let lang_text = RichText::new(self.lang.to_string().to_lowercase());
         let lang_btn = Label::new(lang_text);
@@ -397,6 +382,24 @@ impl MyApp {
             self.enable_flash(id);
             ui.copy_text(text.to_string());
         };
+    }
+
+    pub(super) fn ui_scale(&mut self, ui: &mut Ui) {
+        let state_before = self.ui_scale_ui;
+        ComboBox::new("ui_scale", "")
+            .selected_text(self.ui_scale_ui)
+            .width(30.)
+            .show_ui(ui, |ui| {
+                for text in UI_SCALE_UI.into_iter() {
+                    ui.selectable_value(&mut self.ui_scale_ui, text, text);
+                }
+            })
+            .response.on_hover_text(hints::ui_scale(self.lang));
+
+        if self.ui_scale_ui != state_before {
+            self.ui_scale = self.ui_scale_ui.parse::<f32>().unwrap_or(1.0);
+            self.save_settings();
+        }
     }
 
     pub(super) fn proxy_settings(&mut self, ui: &mut Ui) {

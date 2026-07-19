@@ -162,6 +162,13 @@ pub mod hints {
             Lang::Uk => "ваш_пароль",
         }
     }
+    pub const fn ui_scale<'a>(lang: Lang) -> &'a str {
+        match lang {
+            Lang::En => "Scale. You should restart the application to apply the changes",
+            Lang::Ru => "Масштабирование. Нужно перезапустить приложение для применения настроек",
+            Lang::Uk => "Масштабування. Вам слід перезапустити програму, щоб застосувати зміни",
+        }
+    }
 }
 pub mod ui_messages {
     use super::Lang;

@@ -187,6 +187,7 @@ impl MyApp {
                     self.donate(ui);
                     if self.show_qr { self.donate_popup(ui); }
                     self.lang_switcher(ui);
+                    self.ui_scale(ui);
                 });
             });
         });

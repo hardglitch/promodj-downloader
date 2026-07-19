@@ -2,7 +2,7 @@ mod helpers;
 mod rows;
 mod button;
 
-use crate::data::consts::{FORMS, GENRES};
+use crate::data::consts::{BASE_HEIGHT, BASE_WIDTH, FORMS, GENRES, UI_SCALE_UI};
 use crate::data::dictionary;
 use crate::data::dictionary::Lang;
 use crate::db::dbcore::Database;
@@ -10,7 +10,7 @@ use crate::logic::proxy::ProxyType;
 use crate::logic::Command;
 use crate::ui::button::ButtonState;
 use eframe::{App, Frame};
-use egui::{Pos2, Rect, TextureHandle, Ui};
+use egui::{Pos2, Rect, TextureHandle, Ui, Vec2, ViewportCommand};
 use std::collections::HashMap;
 use std::path::PathBuf;
 use std::sync::Arc;
@@ -77,6 +77,8 @@ pub struct MyApp {
     pub control_tx: Arc<RwLock<UnboundedSender<Command>>>,
     pub control_rx: Arc<RwLock<UnboundedReceiver<Command>>>,
     pub client: reqwest::Client,
+    pub ui_scale: f32,
+    pub ui_scale_ui: &'static str,
 
     buttons: HashMap<egui::Id, ButtonState>,
 }
@@ -137,6 +139,8 @@ impl Default for MyApp {
             control_tx: Arc::new(RwLock::new(tx2)),
             control_rx: Arc::new(RwLock::new(rx2)),
             client: reqwest::Client::new(),
+            ui_scale: 1.0,
+            ui_scale_ui: UI_SCALE_UI[0],
 
             buttons: Default::default(),
         }
@@ -146,10 +150,13 @@ impl App for MyApp {
     fn ui(&mut self, ui: &mut Ui, frame: &mut Frame) {
         if let Some(window) = frame.winit_window() {
             window.set_title(&self.window_title());
+            let width = BASE_WIDTH;
+            let height = BASE_HEIGHT;
+            ui.send_viewport_cmd(ViewportCommand::InnerSize(Vec2::new(width, height)))
         }
 
         egui::CentralPanel::default().show(ui, |ui| {
-            // ui.set_zoom_factor(1.25);
+            ui.set_zoom_factor(self.ui_scale);
 
             self.main_row(ui);
             ui.add_space(10.);

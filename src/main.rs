@@ -16,6 +16,7 @@ use eframe::{egui::ViewportBuilder, NativeOptions};
 use std::io::Write;
 use utils::main_helpers::{load_embedded_icon, load_db};
 use utils::logging::Log;
+use crate::data::consts::{BASE_HEIGHT, BASE_WIDTH};
 
 #[tokio::main]
 async fn main() {
@@ -30,7 +31,7 @@ async fn main() {
 
     let options = NativeOptions {
         viewport: ViewportBuilder::default()
-            .with_inner_size([500.0, 200.0])
+            .with_inner_size([BASE_WIDTH, BASE_HEIGHT])
             .with_resizable(false)
             .with_icon(icon_data)
         ,
