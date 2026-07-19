@@ -58,7 +58,7 @@ impl Database {
     {
         match self.pool.acquire().await {
             Ok(conn) => {
-                match func.async_call_once((conn,)).await {
+                match func(conn,).await {
                     Ok(r) => { Some(r) },
                     Err(e) => {
                         log!("Database error: {e}");
