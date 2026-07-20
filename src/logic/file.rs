@@ -104,7 +104,7 @@ impl<'a> DlFile<'a> {
         let response =
             client
                 .get(link)
-                .timeout(Duration::from_secs(u64::MAX))
+                .timeout(Duration::from_hours(24))
                 .send()
                 .await?;
 

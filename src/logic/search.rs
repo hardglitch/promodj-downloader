@@ -237,7 +237,12 @@ impl Page {
     }
 
     async fn get_raw_page(&self) -> anyhow::Result<Option<String>> {
-        let response = self.client.get(&self.link).send().await?;
+        let response = self.client
+            .get(&self.link)
+            .timeout(Duration::from_secs(30))
+            .send()
+            .await?;
+
         if response.status() != 200 {
             log!("Bad status during parsing = {}", response.status());
             return Ok(None);
