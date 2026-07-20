@@ -503,6 +503,7 @@ impl MyApp {
                     if let Ok(mut buf) = self.proxy_login.try_write() {
                        let enabled = matches!(self.proxy_type, ProxyType::HttpAuth);
                        let widget = egui::widgets::TextEdit::singleline(&mut *buf)
+                            .char_limit(255)
                             .desired_width(ui.available_width())
                             .hint_text(hints::login(self.lang))
                             .font(TextStyle::Heading)
@@ -518,6 +519,7 @@ impl MyApp {
                     if let Ok(mut buf) = self.proxy_password.try_write() {
                         let enabled = matches!(self.proxy_type, ProxyType::HttpAuth);
                         let widget = egui::widgets::TextEdit::singleline(&mut *buf)
+                            .char_limit(255)
                             .desired_width(ui.available_width())
                             .hint_text(hints::password(self.lang))
                             .font(TextStyle::Heading)
