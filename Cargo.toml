@@ -5,8 +5,14 @@ edition = "2024"
 build = "build.rs"
 
 [dependencies]
-eframe = "0.35"
-egui = "0.35"
+eframe = { version = "0.35", default-features = false, features = [
+    "accesskit",
+    "wayland",
+    "web_screen_reader",
+    "wgpu",
+    "x11",
+] }
+egui = { version = "0.35", default-features = false }
 image = { version = "0.25", default-features = false, features = ["png", "ico"] }
 rfd = "0.15"
 configparser = "3.2"
@@ -16,7 +22,7 @@ regex = "1.12"
 tokio = { version =  "1.52", features = ["rt-multi-thread", "macros"] }
 sqlx = { version = "0.9", features = [ "runtime-tokio", "tls-rustls", "sqlite" ] }
 sqlx-core = "0.9"
-reqwest = { version = "0.13", features = [ "stream", "http2" ] }
+reqwest = { version = "0.13", features = [ "stream", "socks" ] }
 futures-util = "0.3"
 anyhow = "1.0"
 scraper = "0.27"
