@@ -29,8 +29,6 @@ impl MyApp {
     }
     
     pub(crate) fn exclusion_filter_popup(&mut self, ui: &mut Ui) {
-        let state_before = self.xf_words.clone();
-
         let resp = Window::new("xf_settings")
             .fixed_size(Vec2::new(300., 100.0))
             .title_bar(false)
@@ -57,9 +55,7 @@ impl MyApp {
                     self.xf_rect.is_some_and(|r| !r.contains(click_pos))
                 {
                     self.show_xf_window = false;
-                    if self.xf_words != state_before {
-                        self.save_settings();
-                    }
+                    self.save_settings();
                 }
             }
         });

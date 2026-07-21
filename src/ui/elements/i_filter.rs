@@ -29,8 +29,6 @@ impl MyApp {
     }
 
     pub(crate) fn inclusion_filter_popup(&mut self, ui: &mut Ui) {
-        let state_before = self.if_words.clone();
-
         let resp = Window::new("if_settings")
             .fixed_size(Vec2::new(300., 100.0))
             .title_bar(false)
@@ -57,9 +55,7 @@ impl MyApp {
                     self.if_rect.is_some_and(|r| !r.contains(click_pos))
                 {
                     self.show_if_window = false;
-                    if self.if_words != state_before {
-                        self.save_settings();
-                    }
+                    self.save_settings();
                 }
             }
         });
