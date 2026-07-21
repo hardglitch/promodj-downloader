@@ -63,7 +63,7 @@ impl Database {
             let not_unique_links = query.fetch_all(&mut *conn).await?;
 
             // 5. Delete not unique links
-            let links = unique_links.into_iter()
+            let links = unique_links.iter()
                 .filter(|(name, _ext)| !not_unique_links.contains(&name.to_string()))
                 .map(|(name, ext)| { format!("{name}.{ext}") })
                 .collect::<Vec<String>>();

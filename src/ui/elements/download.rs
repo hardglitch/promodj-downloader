@@ -98,10 +98,7 @@ impl MyApp {
                         }
                     }
                 }
-                Ok(None) => {
-                    // let msg = dictionary::ui_messages::matching_files_not_found(lang);
-                    // send(msg);
-                }
+                Ok(None) => {}
                 Err(e) => {
                     let msg = dictionary::errors::unable_to_connect(lang);
                     send(msg);

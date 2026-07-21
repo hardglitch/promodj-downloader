@@ -204,13 +204,6 @@ pub mod hints {
 pub mod ui_messages {
     use super::Lang;
 
-    pub const fn matching_files_not_found<'a>(lang: Lang) -> &'a str {
-        match lang {
-            Lang::En => "Matching files not found or already downloaded",
-            Lang::Ru => "Подходящих файлов не найдено или уже скачаны",
-            Lang::Uk => "Відповідні файли не знайдено або вже завантажено",
-        }
-    }
     pub const fn all_files_downloaded<'a>() -> &'a str { "100% - OK" }
     pub const fn searching<'a>(lang: Lang) -> &'a str {
         match lang {
