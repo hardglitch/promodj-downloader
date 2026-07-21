@@ -180,8 +180,13 @@ impl Link {
                         .map(|wd| wd.trim())
                         .collect::<Vec<&str>>();
 
-                    if link_params.use_xf_words && xf_words.iter().any(|wd| decoded_href.contains(wd)) ||
-                       link_params.use_if_words && !if_words.iter().any(|wd| decoded_href.contains(wd))
+                    if link_params.use_xf_words &&
+                       xf_words.len() > 1 && // New string is not empty and contains ""
+                       xf_words.iter().any(|wd| decoded_href.contains(wd))
+                            ||
+                       link_params.use_if_words &&
+                       if_words.len() > 1 && // New string is not empty and contains ""
+                       !if_words.iter().any(|wd| decoded_href.contains(wd))
                     {
                         continue
                     }
