@@ -191,7 +191,7 @@ pub mod hints {
         }
     }
     pub const fn filter_example<'a>() -> &'a str {
-        "word1,word2,word3..."
+        "myword1,my word2, many my words..."
     }
     pub const fn save_to<'a>(lang: Lang) -> &'a str {
         match lang {
