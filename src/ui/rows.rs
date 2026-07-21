@@ -10,75 +10,93 @@ impl MyApp {
             ui.style_mut().spacing.item_spacing = Vec2::default();
 
             // Genre
-            let state_before = self.genre;
-            ComboBox::new("genre", "")
-                .selected_text(self.genre)
-                .width(215.)
-                .show_ui(ui, |ui| {
-                    for (text, _) in GENRES.into_iter() {
-                        ui.selectable_value(&mut self.genre, text, text);
-                    }
-                }).response.on_hover_text(hints::genre(self.lang));
-            if self.genre != state_before { self.save_settings(); }
+            ui.vertical(|ui| {
+                let state_before = self.genre;
+                ComboBox::new("genre", "")
+                    .selected_text(self.genre)
+                    .width(210.)
+                    .show_ui(ui, |ui| {
+                        for (text, _) in GENRES.into_iter() {
+                            ui.selectable_value(&mut self.genre, text, text);
+                        }
+                    }).response.on_hover_text(hints::genre(self.lang));
+                if self.genre != state_before { self.save_settings(); }
+            });
 
             ui.add_space(5.);
 
             // Form
-            let state_before = self.form;
-            ComboBox::new("form", "")
-                .selected_text(self.form)
-                .width(50.)
-                .show_ui(ui, |ui| {
-                    for form in FORMS.into_iter() {
-                        ui.selectable_value(&mut self.form, form, form);
-                    }
-                });
-            if self.form != state_before { self.save_settings(); }
+            ui.vertical(|ui| {
+                let state_before = self.form;
+                ComboBox::new("form", "")
+                    .selected_text(self.form)
+                    .width(50.)
+                    .show_ui(ui, |ui| {
+                        for form in FORMS.into_iter() {
+                            ui.selectable_value(&mut self.form, form, form);
+                        }
+                    });
+                if self.form != state_before { self.save_settings(); }
+            });
 
             ui.add_space(5.);
 
             // Quantity
-            let state_before = self.quantity.clone();
-            ui.add(
-                egui::widgets::TextEdit::singleline(&mut self.quantity)
-                    .desired_width(40.)
-            )
-                .on_hover_text(hints::quantity(self.lang));
-            if self.quantity != state_before &&
-               self.quantity.parse::<u16>().is_ok_and(|n| n <= 1000)
-            { self.save_settings(); }
-            else { self.quantity = state_before }
+            ui.vertical(|ui| {
+                let state_before = self.quantity.clone();
+                ui.add(
+                    egui::widgets::TextEdit::singleline(&mut self.quantity)
+                        .desired_width(40.)
+                )
+                    .on_hover_text(hints::quantity(self.lang));
+                if self.quantity != state_before &&
+                    self.quantity.parse::<u16>().is_ok_and(|n| n <= 1000)
+                { self.save_settings(); }
+                else { self.quantity = state_before }
+            });
 
             ui.add_space(5.);
 
-            let last =
-                if self.period { inscriptions::last_days(self.lang) }
-                else { inscriptions::last_files(self.lang) };
-            ui.label(last);
+            ui.vertical(|ui| {
+                ui.set_width(52.);
+
+                let last =
+                    if self.period { inscriptions::last_days(self.lang) }
+                    else { inscriptions::last_files(self.lang) };
+                ui.label(last);
+            });
 
             ui.add_space(20.);
 
-            if ui
-                .toggle_value(&mut self.use_exclusion_filter, "XF")
-                .on_hover_cursor(CursorIcon::PointingHand)
-                .on_hover_text(hints::exclusion_filter(self.lang))
-                .clicked()
-            {
-                self.save_settings();
-            }
-            self.exclusion_filter_settings(ui);
+            ui.vertical(|ui| {
+                if ui
+                    .toggle_value(&mut self.use_exclusion_filter, "XF")
+                    .on_hover_cursor(CursorIcon::PointingHand)
+                    .on_hover_text(hints::exclusion_filter(self.lang))
+                    .clicked()
+                {
+                    self.save_settings();
+                }
+            });
+            ui.vertical(|ui| {
+                self.exclusion_filter_settings(ui);
+            });
 
             ui.add_space(10.);
 
-            if ui
-                .toggle_value(&mut self.use_inclusion_filter, "IF")
-                .on_hover_cursor(CursorIcon::PointingHand)
-                .on_hover_text(hints::inclusion_filter(self.lang))
-                .clicked()
-            {
-                self.save_settings();
-            }
-            self.inclusion_filter_settings(ui);
+            ui.vertical(|ui| {
+                if ui
+                    .toggle_value(&mut self.use_inclusion_filter, "IF")
+                    .on_hover_cursor(CursorIcon::PointingHand)
+                    .on_hover_text(hints::inclusion_filter(self.lang))
+                    .clicked()
+                {
+                    self.save_settings();
+                }
+            });
+            ui.vertical(|ui| {
+                self.inclusion_filter_settings(ui);
+            });
         });
 
         if self.show_xf_window { self.exclusion_filter_popup(ui); }
