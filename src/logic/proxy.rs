@@ -13,13 +13,13 @@ use tokio::sync::RwLock;
 pub enum ProxyType {
     #[default]
     Http,
-    HttpAuth,
+    Https,
     Socks5,
 }
 impl ProxyType {
     pub fn from<T: Display + AsRef<str>>(string: T) -> Option<Self> {
         if string.as_ref().eq_ignore_ascii_case("Http") { Some(Self::Http) }
-        else if string.as_ref().eq_ignore_ascii_case("HttpAuth") { Some(Self::HttpAuth) }
+        else if string.as_ref().eq_ignore_ascii_case("Https") { Some(Self::Https) }
         else if string.as_ref().eq_ignore_ascii_case("Socks5") { Some(Self::Socks5) }
         else { None }
     }
@@ -114,11 +114,11 @@ impl MyApp {
         let address = SocketAddr::new(host, port);
 
         let login =
-            if let Ok(s) = self.proxy_login.try_read() && !s.is_empty() { Some(s.clone()) }
+            if let Ok(s) = self.proxy_login.try_read() && s.len() > 1 { Some(s.clone()) }
             else { None };
 
         let password =
-            if let Ok(s) = self.proxy_password.try_read() && !s.is_empty() { Some(s.clone()) }
+            if let Ok(s) = self.proxy_password.try_read() && s.len() > 1 { Some(s.clone()) }
             else { None };
 
         let proxy = Proxy {
@@ -146,9 +146,9 @@ impl MyApp {
     }
     fn proxy_logic(&mut self, proxy: &Proxy) -> anyhow::Result<()> {
         if self.use_proxy {
-            let proxy_url = reqwest::Proxy::http(proxy.to_string())?;
+            let req_proxy = reqwest::Proxy::all(proxy.to_string())?;
             let client = reqwest::Client::builder()
-                .proxy(proxy_url)
+                .proxy(req_proxy)
                 .build()?;
             self.client = client;
         }

@@ -83,34 +83,30 @@ impl MyApp {
                 });
 
                 // 2. Auth
-                // 2-1. Login (disabled if not http_auth)
+                // 2-1. Login
                 ui.horizontal(|ui| {
                     if let Ok(mut buf) = self.proxy_login.try_write() {
-                        let enabled = matches!(self.proxy_type, ProxyType::HttpAuth);
                         let widget = egui::widgets::TextEdit::singleline(&mut *buf)
                             .char_limit(255)
                             .desired_width(ui.available_width())
                             .hint_text(hints::login(self.lang))
                             .font(TextStyle::Heading)
-                            .desired_rows(1)
-                            .interactive(enabled);
+                            .desired_rows(1);
 
                         ui.add(widget);
                     }
                 });
 
-                // 2-2. Password (disabled if not http_auth)
+                // 2-2. Password
                 ui.horizontal(|ui| {
                     if let Ok(mut buf) = self.proxy_password.try_write() {
-                        let enabled = matches!(self.proxy_type, ProxyType::HttpAuth);
                         let widget = egui::widgets::TextEdit::singleline(&mut *buf)
                             .char_limit(255)
                             .desired_width(ui.available_width())
                             .hint_text(hints::password(self.lang))
                             .font(TextStyle::Heading)
                             .desired_rows(1)
-                            .password(true)
-                            .interactive(enabled);
+                            .password(true);
 
                         ui.add(widget);
                     }
