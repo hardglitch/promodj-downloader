@@ -169,6 +169,37 @@ pub mod hints {
             Lang::Uk => "Масштабування",
         }
     }
+    pub const fn exclusion_filter<'a>(lang: Lang) -> &'a str {
+        match lang {
+            Lang::En => "Links containing words from this filter will be excluded",
+            Lang::Ru => "Ссылки, содержащие слова из этого фильтра, будут исключаться",
+            Lang::Uk => "Посилання, що містять слова з цього фільтра, будуть виключені",
+        }
+    }
+    pub const fn inclusion_filter<'a>(lang: Lang) -> &'a str {
+        match lang {
+            Lang::En => "Only links containing words from this filter will be included",
+            Lang::Ru => "Только ссылки, содержащие слова из этого фильтра, будут включаться",
+            Lang::Uk => "Тільки посилання, що містять слова з цього фільтра, будуть включені",
+        }
+    }
+    pub const fn filter_settings<'a>(lang: Lang) -> &'a str {
+        match lang {
+            Lang::En => "Filter settings",
+            Lang::Ru => "Настройки фильтра",
+            Lang::Uk => "Налаштування фільтра",
+        }
+    }
+    pub const fn filter_example<'a>() -> &'a str {
+        "word1,word2,word3..."
+    }
+    pub const fn save_to<'a>(lang: Lang) -> &'a str {
+        match lang {
+            Lang::En => "Save to",
+            Lang::Ru => "Сохранить в",
+            Lang::Uk => "Зберегти у",
+        }
+    }
 }
 pub mod ui_messages {
     use super::Lang;
@@ -239,13 +270,6 @@ pub mod inscriptions {
             Lang::En => "Overwrite files",
             Lang::Ru => "Перезаписывать файлы",
             Lang::Uk => "Перезаписувати файли",
-        }
-    }
-    pub const fn save_to<'a>(lang: Lang) -> &'a str {
-        match lang {
-            Lang::En => "Save to",
-            Lang::Ru => "Сохранить в",
-            Lang::Uk => "Зберегти у",
         }
     }
     pub const fn download<'a>(lang: Lang) -> &'a str {

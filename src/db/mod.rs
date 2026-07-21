@@ -41,7 +41,7 @@ impl Database {
         self.call(tx).await
     }
 
-    pub async fn filter_by_history(&self, unique_links: HashMap<&str, &str>) -> Option<Vec<String>> {
+    pub async fn filter_by_history(&self, unique_links: &HashMap<&str, &str>) -> Option<Vec<String>> {
         let tx = async move |mut conn: PoolConnection<DBType>| -> Result<Vec<String>, sqlx::Error> {
 
             // 1. Collect all the link values into a vector

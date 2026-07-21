@@ -3,3 +3,4 @@ pub mod main_helpers;
 pub mod security;
 #[cfg(target_feature = "sse2")]
 pub mod simd;
+pub mod tools;

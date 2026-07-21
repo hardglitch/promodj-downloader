@@ -1,13 +1,14 @@
-use crate::logic::tools::clear_filename;
-use crate::logic::{tools, Command};
+use crate::db::dbcore::Database;
+use crate::logic::Command;
+use crate::utils::tools;
+use crate::utils::tools::clear_filename;
 use futures_util::StreamExt;
-use std::path::{Path, PathBuf};
+use std::path::Path;
 use std::sync::Arc;
 use std::time::Duration;
 use tokio::io::AsyncWriteExt;
 use tokio::sync::mpsc::{UnboundedReceiver, UnboundedSender};
 use tokio::sync::RwLock;
-use crate::db::dbcore::Database;
 
 pub async fn download_files(
     links: &[String],
@@ -47,20 +48,19 @@ pub async fn download_files(
 }
 
 #[derive(Debug)]
-pub(crate) struct DlFile<'a> {
+pub(crate) struct DlFile<'a, 'b> {
     link: &'a str,
     name: String,
-    path: PathBuf,
+    path: &'b Path,
 }
-impl<'a> DlFile<'a> {
-    pub(crate) fn new(link: &'a str, save_to: &Path) -> anyhow::Result<Self> {
+impl<'a, 'b> DlFile<'a, 'b> {
+    pub(crate) fn new(link: &'a str, save_to: &'b Path) -> anyhow::Result<Self> {
         let (_base_url, name) = match link.rsplit_once('/') {
             Some(n) => n,
             None => return Err(anyhow::anyhow!("Bad link"))
         };
         let name = clear_filename(name);
-        let path = save_to.join(&name);
-        Ok(Self { link, name, path })
+        Ok(Self { link, name, path: save_to })
     }
 
     pub(crate) async fn download(
@@ -74,20 +74,20 @@ impl<'a> DlFile<'a> {
     )
         -> anyhow::Result<Option<Command>>
     {
-        if self.path.exists() && !overwrite {
+        let file_path = self.path.join(&self.name);
+        if file_path.exists() && !overwrite {
             let new_filename = match tools::new_filename(&self.name) {
                 Some(n) => n,
                 None => return Err(anyhow::anyhow!("Bad the new file name"))
             };
-            let new_path = self.path.join(&new_filename);
             self.name = new_filename;
-            self.path = new_path;
         }
 
-        #[allow(unused_mut)]
-        let mut link = self.link.to_owned();
+        #[cfg(not(feature = "test"))]
+        let link = self.link.to_owned();
 
         #[cfg(feature = "test")]
+        let link =
         {
             let (base_url, name) = match self.link.rsplit_once('/') {
                 Some(n) => n,
@@ -98,8 +98,8 @@ impl<'a> DlFile<'a> {
                 None => return Err(anyhow::anyhow!("Bad the file name"))
             };
             let encoded_name = percent_encoding::utf8_percent_encode(name, percent_encoding::NON_ALPHANUMERIC);
-            link = format!("{base_url}/{encoded_name}.{ext}");
-        }
+            format!("{base_url}/{encoded_name}.{ext}")
+        };
 
         let response =
             client
@@ -112,7 +112,8 @@ impl<'a> DlFile<'a> {
             return Err(anyhow::anyhow!("Bad status = {}", response.status()));
         }
 
-        let mut file = tokio::fs::File::create(&self.path).await?;
+        let file_path = self.path.join(&self.name);
+        let mut file = tokio::fs::File::create(&file_path).await?;
         let file_length = response.content_length();
         let mut stream = response.bytes_stream();
         let mut downloaded = 0;

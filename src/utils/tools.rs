@@ -29,9 +29,7 @@ pub fn clear_filename(filename: &str) -> String {
     s.trim().to_owned()
 }
 pub fn new_filename(old_filename: &str) -> Option<String> {
-    let mut split = old_filename.rsplit('.');
-    let name = split.next()?;
-    let ext = split.next()?;
+    let (name, ext) = old_filename.rsplit_once('.')?;
     let ts = std::time::SystemTime::now().duration_since(UNIX_EPOCH).ok()?.as_secs();
     let new_filename = format!("{name}-{ts}.{ext}");
     Some(new_filename)
@@ -69,9 +67,9 @@ mod tests {
     }
     #[test]
     fn test_new_filename1_pos() {
-        let f_name = "07 - 𝖂𝖎𝖓𝖙𝖊𝖗𝖋𝖆𝖚𝖓 & 𝑻𝒉𝒆 𝑴𝒂𝒄𝒉𝒊𝒏𝒆";
+        let f_name = "07 - 𝖂𝖎𝖓𝖙𝖊𝖗𝖋𝖆𝖚𝖓 & 𝑻𝒉𝒆 𝑴𝒂𝒄𝒉𝒊𝒏𝒆.flac";
         let res = new_filename(f_name);
-        assert_ne!(Some("07 - 𝖂𝖎𝖓𝖙𝖊𝖗𝖋𝖆𝖚𝖓 & 𝑻𝒉𝒆 𝑴𝒂𝒄𝒉𝒊𝒏𝒆".to_owned()), res);
+        assert_ne!(Some("07 - 𝖂𝖎𝖓𝖙𝖊𝖗𝖋𝖆𝖚𝖓 & 𝑻𝒉𝒆 𝑴𝒂𝒄𝒉𝒊𝒏𝒆.flac".to_owned()), res);
     }
     #[test]
     fn test_new_filename2_pos() {

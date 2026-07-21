@@ -7,12 +7,13 @@ use egui::{ComboBox, CursorIcon, Layout, Ui, Vec2};
 impl MyApp {
     pub(super) fn main_row(&mut self, ui: &mut Ui) {
         ui.horizontal(|ui| {
+            ui.style_mut().spacing.item_spacing = Vec2::default();
 
             // Genre
             let state_before = self.genre;
             ComboBox::new("genre", "")
                 .selected_text(self.genre)
-                .width(250.)
+                .width(215.)
                 .show_ui(ui, |ui| {
                     for (text, _) in GENRES.into_iter() {
                         ui.selectable_value(&mut self.genre, text, text);
@@ -20,16 +21,21 @@ impl MyApp {
                 }).response.on_hover_text(hints::genre(self.lang));
             if self.genre != state_before { self.save_settings(); }
 
+            ui.add_space(5.);
+
             // Form
             let state_before = self.form;
             ComboBox::new("form", "")
                 .selected_text(self.form)
+                .width(50.)
                 .show_ui(ui, |ui| {
                     for form in FORMS.into_iter() {
                         ui.selectable_value(&mut self.form, form, form);
                     }
                 });
             if self.form != state_before { self.save_settings(); }
+
+            ui.add_space(5.);
 
             // Quantity
             let state_before = self.quantity.clone();
@@ -43,16 +49,46 @@ impl MyApp {
             { self.save_settings(); }
             else { self.quantity = state_before }
 
+            ui.add_space(5.);
+
             let last =
                 if self.period { inscriptions::last_days(self.lang) }
                 else { inscriptions::last_files(self.lang) };
             ui.label(last);
+
+            ui.add_space(20.);
+
+            if ui
+                .toggle_value(&mut self.use_exclusion_filter, "XF")
+                .on_hover_cursor(CursorIcon::PointingHand)
+                .on_hover_text(hints::exclusion_filter(self.lang))
+                .clicked()
+            {
+                self.save_settings();
+            }
+            self.exclusion_filter_settings(ui);
+
+            ui.add_space(10.);
+
+            if ui
+                .toggle_value(&mut self.use_inclusion_filter, "IF")
+                .on_hover_cursor(CursorIcon::PointingHand)
+                .on_hover_text(hints::inclusion_filter(self.lang))
+                .clicked()
+            {
+                self.save_settings();
+            }
+            self.inclusion_filter_settings(ui);
         });
+
+        if self.show_xf_window { self.exclusion_filter_popup(ui); }
+        if self.show_if_window { self.inclusion_filter_popup(ui); }
     }
 
     pub(super) fn toggles_row(&mut self, ui: &mut Ui) {
         ui.horizontal(|ui| {
-            ui.add_space(20.);
+            ui.style_mut().spacing.item_spacing = Vec2::default();
+            ui.add_space(28.);
 
             ui.vertical(|ui| {
                 ui.set_width(60.);
@@ -67,6 +103,8 @@ impl MyApp {
                     }
                 });
             });
+
+            ui.add_space(5.);
 
             ui.vertical(|ui| {
                 ui.set_width(155.);
@@ -85,6 +123,8 @@ impl MyApp {
                 });
             });
 
+            ui.add_space(5.);
+
             ui.vertical(|ui| {
                 ui.set_width(55.);
                 ui.with_layout(Layout::centered_and_justified(egui::Direction::TopDown), |ui| {
@@ -98,6 +138,8 @@ impl MyApp {
                     }
                 });
             });
+
+            ui.add_space(5.);
 
             ui.vertical(|ui| {
                 ui.set_width(80.);
@@ -113,26 +155,25 @@ impl MyApp {
                 });
             });
 
-            ui.vertical(|ui| {
-                ui.set_width(50.);
-                ui.with_layout(Layout::centered_and_justified(egui::Direction::TopDown), |ui| {
-                    ui.horizontal(|ui| {
-                        ui.style_mut().spacing.item_spacing = Vec2::default();
+            ui.add_space(5.);
 
-                        if ui
-                            .toggle_value(&mut self.use_proxy, "Proxy")
-                            .on_hover_cursor(CursorIcon::PointingHand)
-                            .on_hover_text(hints::proxy(self.lang))
-                            .clicked()
-                        {
-                            self.save_settings();
-                        }
-                        self.proxy_settings(ui);
-                    });
+            ui.vertical(|ui| {
+                ui.set_width(44.);
+                ui.with_layout(Layout::centered_and_justified(egui::Direction::TopDown), |ui| {
+                    if ui
+                        .toggle_value(&mut self.use_proxy, "Proxy")
+                        .on_hover_cursor(CursorIcon::PointingHand)
+                        .on_hover_text(hints::proxy(self.lang))
+                        .clicked()
+                    {
+                        self.save_settings();
+                    }
                 });
             });
+            ui.vertical(|ui| {
+                self.proxy_settings(ui);
+            });
         });
-
         if self.show_proxy_window { self.proxy_popup(ui); }
     }
 
@@ -140,7 +181,9 @@ impl MyApp {
         ui.horizontal(|ui| {
             self.save_to(ui);
             if let Some(p) = self.save_to.as_path().to_str() {
-                ui.label(p);
+                ui.add(
+                    egui::Label::new(p).truncate()
+                );
             }
         });
     }
@@ -187,8 +230,8 @@ impl MyApp {
                     ui.add_space(5.0);
 
                     ui
-                        .hyperlink_to("hardglitch", "https://github.com/hardglitch")
-                        .on_hover_text("https://github.com/hardglitch");
+                        .hyperlink_to("home", "https://github.com/hardglitch/promodj-downloader")
+                        .on_hover_text("https://github.com/hardglitch/promodj-downloader");
                     ui.add_space(5.0);
 
                     self.donate(ui);
@@ -199,6 +242,7 @@ impl MyApp {
                     ui.add_space(5.0);
 
                     self.ui_scale(ui);
+                    if self.show_loupe_window { self.ui_scale_popup(ui); }
                 });
             });
         });

@@ -1,0 +1,9 @@
+mod donate;
+mod scaler;
+mod x_filter;
+mod i_filter;
+mod lang_switcher;
+mod proxy;
+mod save_to;
+mod progress_bar;
+mod download;

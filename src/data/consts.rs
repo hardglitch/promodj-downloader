@@ -1,7 +1,6 @@
 pub const VERSION: &str = env!("PROJECT_VERSION");
 pub const BASE_WIDTH: f32 = 500.;
 pub const BASE_HEIGHT: f32 = 200.;
-pub const UI_SCALE_UI: [&str; 5] = ["1.00", "1.25", "1.50", "1.75", "2.00"];
 pub const LOSSLESS_UNCOMPRESSED_FORMATS: [&str; 2] = ["wav", "aiff"];
 pub const LOSSLESS_COMPRESSED_FORMATS: [&str; 1] = ["flac"];
 pub const LOSSY_FORMATS: [&str; 1] = ["mp3"];

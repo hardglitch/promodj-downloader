@@ -23,6 +23,10 @@ pub struct LinkParams<'a> {
     pub lang: Lang,
     pub file_history: bool,
     pub lossless: bool,
+    pub use_xf_words: bool,
+    pub xf_words: String,
+    pub use_if_words: bool,
+    pub if_words: String,
     pub client: reqwest::Client,
     pub db: Option<Arc<Database>>,
     pub common_tx: Arc<RwLock<UnboundedSender<Command>>>,
@@ -35,6 +39,7 @@ impl Link {
 
         // 1. Get the link set
         let mut found_links: HashSet<String> = HashSet::new();
+        let mut found_links_on_previous_page: HashSet<String> = HashSet::new();
         let mut page_number = 1;
 
         while (found_links.len() < link_params.quantity && !link_params.period) ||
@@ -62,7 +67,7 @@ impl Link {
                 match page.get_raw_page().await? {
                     Some(raw_page) => {
                         let html = Html::parse_document(&raw_page);
-                        Self.get_filtered_links(&html, link_params.lossless)?
+                        Self.get_filtered_links(&html, &link_params)?
                     }
                     None => {
                         let msg = dictionary::errors::no_links_to_filtering(link_params.lang);
@@ -73,10 +78,11 @@ impl Link {
                     }
                 };
 
-            if !found_links_on_page.is_empty() {
+            if !found_links_on_page.is_empty() && found_links_on_previous_page != found_links_on_page {
+                found_links_on_previous_page = found_links_on_page.clone();
                 found_links.extend(found_links_on_page);
             }
-            // If we found nothing on this page, stop searching
+            // If we found nothing on this page or repeat previous page, stop searching
             else { break; }
 
             page_number += 1;
@@ -110,13 +116,18 @@ impl Link {
         }
 
         // 3. Check found links in the history
-        let mut found_links = Vec::<String>::new();
-        if link_params.file_history &&
-           let Some(db) = link_params.db &&
-           let Some(links) = db.filter_by_history(unique_links).await
-        {
-            found_links = links;
-        }
+        let mut found_links =
+            if link_params.file_history &&
+               let Some(db) = link_params.db &&
+               let Some(links) = db.filter_by_history(&unique_links).await
+            {
+                links
+            }
+            else {
+                unique_links.into_iter()
+                    .map(|(name, ext)| { format!("{name}.{ext}") })
+                    .collect::<Vec<String>>()
+            };
 
         // 4. Truncate found links
         if link_params.period { found_links.truncate(MAX_QUANTITY) }
@@ -134,8 +145,8 @@ impl Link {
         Ok(Some(found_links))
     }
 
-    pub fn get_filtered_links(&self, raw_html: &Html, lossless: bool) -> anyhow::Result<HashSet<String>> {
-        let formats: Vec<&str> = if lossless {
+    pub fn get_filtered_links<'a>(&self, raw_html: &Html, link_params: &LinkParams<'a>) -> anyhow::Result<HashSet<String>> {
+        let formats: Vec<&str> = if link_params.lossless {
             LOSSLESS_COMPRESSED_FORMATS.iter().chain(&LOSSLESS_UNCOMPRESSED_FORMATS).copied().collect()
         } else {
             LOSSY_FORMATS.to_vec()
@@ -157,6 +168,24 @@ impl Link {
 
                 if format_matches && is_source {
                     let decoded_href = percent_decode_str(href).decode_utf8()?.to_lowercase();
+
+                    // Use custom filters
+                    let xf_words = link_params.xf_words
+                        .split(',')
+                        .map(|wd| wd.trim())
+                        .collect::<Vec<&str>>();
+
+                    let if_words = link_params.if_words
+                        .split(',')
+                        .map(|wd| wd.trim())
+                        .collect::<Vec<&str>>();
+
+                    if link_params.use_xf_words && xf_words.iter().any(|wd| decoded_href.contains(wd)) ||
+                       link_params.use_if_words && !if_words.iter().any(|wd| decoded_href.contains(wd))
+                    {
+                        continue
+                    }
+
                     links.insert(decoded_href);
                 }
             }
