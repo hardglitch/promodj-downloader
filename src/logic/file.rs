@@ -14,7 +14,7 @@ use tokio::sync::RwLock;
 pub async fn download_files(
     links: &[String],
     save_to: &Path,
-    client: reqwest::Client,
+    client: Arc<RwLock<reqwest::Client>>,
     overwrite_files: bool,
     db: Option<Arc<Database>>,
     common_tx: Arc<RwLock<UnboundedSender<Command>>>,
@@ -33,7 +33,7 @@ pub async fn download_files(
                 overwrite_files,
                 common_tx.clone(),
                 control_rx.clone(),
-                link_number + 1,
+                link_number.saturating_add(1),
                 total_links
             ).await?;
 
@@ -66,7 +66,7 @@ impl<'a, 'b> DlFile<'a, 'b> {
 
     pub(crate) async fn download(
         &mut self,
-        client: reqwest::Client,
+        client: Arc<RwLock<reqwest::Client>>,
         overwrite: bool,
         common_tx: Arc<RwLock<UnboundedSender<Command>>>,
         control_rx: Arc<RwLock<UnboundedReceiver<Command>>>,
@@ -102,7 +102,17 @@ impl<'a, 'b> DlFile<'a, 'b> {
             format!("{base_url}/{encoded_name}.{ext}")
         };
 
-        let response = response(client, &link, 3).await?;
+        let response =
+            match response(client.clone(), &link, 3).await {
+                Ok(resp) => resp,
+                Err(_) => {
+                    // Session expires? (The Site sets short timeout)
+                    // Try to connect with new session
+                    let new_session = reqwest::Client::new();
+                    *client.write().await = new_session;
+                    response(client, &link, 3).await?
+                }
+            };
         if !response.status().is_success() {
             return Err(anyhow::anyhow!("Bad status = {}", response.status()));
         }
@@ -168,13 +178,13 @@ impl<'a, 'b> DlFile<'a, 'b> {
     }
 }
 
-async fn response(client: reqwest::Client, link: &str, retries: u8) -> Result<Response, Error> {
+async fn response(client: Arc<RwLock<reqwest::Client>>, link: &str, retries: u8) -> Result<Response, Error> {
     for i in 1..=retries {
         match client
+            .read().await
             .get(link)
             .timeout(Duration::from_hours(24))
-            .send()
-            .await
+            .send().await
         {
             Ok(resp) => return Ok(resp),
             Err(e) if i == retries => { return Err(e) }

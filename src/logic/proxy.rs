@@ -150,7 +150,7 @@ impl MyApp {
             let client = reqwest::Client::builder()
                 .proxy(req_proxy)
                 .build()?;
-            self.client = client;
+            *self.client.try_write()? = client;
         }
 
         self.proxy_type = proxy.proxy_type;

@@ -89,7 +89,7 @@ pub struct MyApp {
     pub common_rx: Arc<RwLock<UnboundedReceiver<Command>>>,
     pub control_tx: Arc<RwLock<UnboundedSender<Command>>>,
     pub control_rx: Arc<RwLock<UnboundedReceiver<Command>>>,
-    pub client: reqwest::Client,
+    pub client: Arc<RwLock<reqwest::Client>>,
 
     ui_scale: f32,
     loupe_tx: Option<TextureHandle>,
@@ -167,7 +167,7 @@ impl Default for MyApp {
             common_rx: Arc::new(RwLock::new(rx1)),
             control_tx: Arc::new(RwLock::new(tx2)),
             control_rx: Arc::new(RwLock::new(rx2)),
-            client: reqwest::Client::new(),
+            client: Arc::new(RwLock::new(reqwest::Client::new())),
 
             ui_scale: 1.0,
             loupe_tx: None,

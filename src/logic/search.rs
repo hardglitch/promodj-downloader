@@ -27,7 +27,7 @@ pub struct LinkParams<'a> {
     pub xf_words: String,
     pub use_if_words: bool,
     pub if_words: String,
-    pub client: reqwest::Client,
+    pub client: Arc<RwLock<reqwest::Client>>,
     pub db: Option<Arc<Database>>,
     pub common_tx: Arc<RwLock<UnboundedSender<Command>>>,
 }
@@ -240,7 +240,7 @@ impl Drop for UiActionHandle {
 
 struct Page {
     link: String,
-    client: reqwest::Client,
+    client: Arc<RwLock<reqwest::Client>>,
 }
 impl Page {
     async fn new(
@@ -250,7 +250,7 @@ impl Page {
         quantity: usize,
         lossless: bool,
         period: bool,
-        client: reqwest::Client,
+        client: Arc<RwLock<reqwest::Client>>,
     )
         -> Self
     {
@@ -272,10 +272,10 @@ impl Page {
 
     async fn get_raw_page(&self) -> anyhow::Result<Option<String>> {
         let response = self.client
+            .read().await
             .get(&self.link)
             .timeout(Duration::from_secs(30))
-            .send()
-            .await?;
+            .send().await?;
 
         if response.status() != 200 {
             log!("Bad status during parsing = {}", response.status());
