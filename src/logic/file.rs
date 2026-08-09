@@ -106,8 +106,8 @@ impl<'a, 'b> DlFile<'a, 'b> {
             match response(client.clone(), &link, 3).await {
                 Ok(resp) => resp,
                 Err(_) => {
-                    // Session expires? (The Site sets short timeout)
-                    // Try to connect with new session
+                    // Does session expire? (The Site sets short timeout)
+                    // Try connecting to the Site with a new session
                     let new_session = reqwest::Client::new();
                     *client.write().await = new_session;
                     response(client, &link, 3).await?
