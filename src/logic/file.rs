@@ -6,6 +6,7 @@ use futures_util::StreamExt;
 use std::path::Path;
 use std::sync::Arc;
 use std::time::Duration;
+use reqwest::{Error, Response};
 use tokio::io::AsyncWriteExt;
 use tokio::sync::mpsc::{UnboundedReceiver, UnboundedSender};
 use tokio::sync::RwLock;
@@ -101,13 +102,7 @@ impl<'a, 'b> DlFile<'a, 'b> {
             format!("{base_url}/{encoded_name}.{ext}")
         };
 
-        let response =
-            client
-                .get(link)
-                .timeout(Duration::from_hours(24))
-                .send()
-                .await?;
-
+        let response = response(client, &link, 3).await?;
         if !response.status().is_success() {
             return Err(anyhow::anyhow!("Bad status = {}", response.status()));
         }
@@ -171,4 +166,22 @@ impl<'a, 'b> DlFile<'a, 'b> {
         }
         Ok(None)
     }
+}
+
+async fn response(client: reqwest::Client, link: &str, retries: u8) -> Result<Response, Error> {
+    for i in 1..=retries {
+        match client
+            .get(link)
+            .timeout(Duration::from_hours(24))
+            .send()
+            .await
+        {
+            Ok(resp) => return Ok(resp),
+            Err(e) if i == retries => { return Err(e) }
+            _ => {
+                tokio::time::sleep(Duration::from_secs(i as u64)).await;
+            }
+        };
+    }
+    unreachable!()
 }
