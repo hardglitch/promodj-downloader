@@ -1,10 +1,9 @@
 pub mod dbcore;
 
 use crate::db::dbcore::{DBType, Database};
-use crate::log;
 use sqlx_core::pool::PoolConnection;
 use std::collections::HashMap;
-use std::io::Write;
+use log::log;
 use sqlx_core::sql_str::AssertSqlSafe;
 
 impl Database {

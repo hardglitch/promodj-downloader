@@ -1,8 +1,7 @@
 use std::sync::Arc;
 use egui::IconData;
+use log::log;
 use crate::db::dbcore::{Database, DB_NAME};
-use crate::log;
-use std::io::Write;
 
 pub fn load_embedded_icon(bytes: &[u8]) -> Result<IconData, image::ImageError> {
     let image = image::load_from_memory(bytes)?.into_rgba8();

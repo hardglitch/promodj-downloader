@@ -1,11 +1,10 @@
-use crate::log;
 use crate::ui::MyApp;
 use crate::utils::security::{encrypt_and_write, read_and_decrypt};
 use anyhow::anyhow;
 use std::fmt::{Display, Formatter};
-use std::io::Write;
 use std::net::{IpAddr, Ipv4Addr, SocketAddr};
 use std::sync::Arc;
+use log::log;
 use strum::{Display, EnumIter};
 use tokio::sync::RwLock;
 

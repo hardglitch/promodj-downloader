@@ -1,10 +1,8 @@
 use crate::data::consts::{LOSSLESS_COMPRESSED_FORMATS, LOSSLESS_UNCOMPRESSED_FORMATS, LOSSY_FORMATS};
-use crate::utils::logging::Log;
 use std::path::Path;
+use log::{log, Log};
 use tokio::io::{AsyncReadExt, AsyncWriteExt};
 use tokio::net::{TcpListener, TcpStream};
-use crate::log;
-use std::io::Write;
 use percent_encoding::{percent_decode, percent_encode, NON_ALPHANUMERIC};
 
 const SERVER_ADDR: &str = "127.0.0.1:80";

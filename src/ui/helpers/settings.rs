@@ -2,10 +2,9 @@ use std::path::PathBuf;
 use std::str::FromStr;
 use std::time::UNIX_EPOCH;
 use configparser::ini::Ini;
+use log::log;
 use crate::data::consts::{FORMS, GENRES};
 use crate::data::dictionary::Lang;
-use crate::log;
-use std::io::Write;
 use crate::ui::MyApp;
 
 impl MyApp {

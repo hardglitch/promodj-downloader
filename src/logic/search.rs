@@ -2,13 +2,12 @@ use crate::data::consts::{GENRES, LOSSLESS_COMPRESSED_FORMATS, LOSSLESS_UNCOMPRE
 use crate::data::dictionary;
 use crate::data::dictionary::Lang;
 use crate::db::dbcore::Database;
-use crate::log;
 use anyhow::anyhow;
 use scraper::{Html, Selector};
 use std::collections::{HashMap, HashSet};
-use std::io::Write;
 use std::sync::Arc;
 use std::time::Duration;
+use log::log;
 use percent_encoding::percent_decode_str;
 use tokio::sync::mpsc::UnboundedSender;
 use tokio::sync::RwLock;

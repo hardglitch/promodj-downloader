@@ -1,10 +1,9 @@
 use eframe::emath::vec2;
 use egui::{CursorIcon, Image, RichText, Sense, Ui};
 use egui::load::SizedTexture;
+use log::log;
 use crate::data::dictionary;
 use crate::data::dictionary::{hints, inscriptions};
-use crate::log;
-use std::io::Write;
 use crate::logic::Command;
 use crate::logic::file::download_files;
 use crate::logic::search::{Link, LinkParams};

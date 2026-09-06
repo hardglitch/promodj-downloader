@@ -12,9 +12,8 @@ mod db_converter;
 
 use ui::MyApp;
 use eframe::{egui::ViewportBuilder, NativeOptions};
-use std::io::Write;
+use log::{log, Log};
 use utils::main_helpers::{load_embedded_icon, load_db};
-use utils::logging::Log;
 use crate::data::consts::{BASE_HEIGHT, BASE_WIDTH};
 
 #[tokio::main]

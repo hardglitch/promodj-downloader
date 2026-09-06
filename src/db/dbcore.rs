@@ -1,7 +1,6 @@
+use log::log;
 use sqlx_core::migrate::MigrateDatabase;
 use sqlx_core::pool::{Pool, PoolConnection};
-use crate::log;
-use std::io::Write;
 
 pub const DB_NAME: &str = "history.db";
 pub type DBType = sqlx::Sqlite;

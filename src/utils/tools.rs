@@ -1,8 +1,7 @@
-use crate::log;
 use regex::Regex;
-use std::io::Write;
 use std::sync::LazyLock;
 use std::time::UNIX_EPOCH;
+use log::log;
 
 // Remove forbidden symbols
 static RE1: LazyLock<Regex> = LazyLock::new(|| {

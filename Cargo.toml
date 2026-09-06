@@ -16,7 +16,6 @@ egui = { version = "0.35", default-features = false }
 image = { version = "0.25", default-features = false, features = ["png", "ico"] }
 rfd = "0.15"
 configparser = "3.2"
-chrono = "0.4"
 strum = { version = "0.27", features = ["derive"] }
 regex = "1.12"
 tokio = { version =  "1.52", features = ["rt-multi-thread", "macros"] }
@@ -29,6 +28,10 @@ scraper = "0.27"
 percent-encoding = "2.3"
 aes-gcm = { version = "0.11", features = ["getrandom", "arrayvec", "rand_core"] }
 rand = "0.10"
+
+log = { git = "https://github.com/hardglitch/log.git" }
+[patch."https://github.com/hardglitch/log.git"]
+log = { path = "../_SHARED_LIBS/log" }
 
 [dev-dependencies]
 tempfile = "3"

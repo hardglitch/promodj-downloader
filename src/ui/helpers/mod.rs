@@ -5,14 +5,13 @@ pub mod button;
 
 use crate::data::dictionary::inscriptions;
 use crate::db::dbcore::Database;
-use crate::log;
 use crate::logic::Command;
 use crate::ui::MyApp;
 use eframe::epaint::text::{FontData, FontDefinitions};
 use eframe::epaint::FontFamily;
 use eframe::CreationContext;
-use std::io::Write;
 use std::sync::Arc;
+use log::log;
 use crate::utils::tools;
 
 impl MyApp {
