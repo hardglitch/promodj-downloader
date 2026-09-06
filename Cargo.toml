@@ -29,9 +29,8 @@ percent-encoding = "2.3"
 aes-gcm = { version = "0.11", features = ["getrandom", "arrayvec", "rand_core"] }
 rand = "0.10"
 
-log = { git = "https://github.com/hardglitch/log.git" }
-[patch."https://github.com/hardglitch/log.git"]
-log = { path = "../_SHARED_LIBS/log" }
+log = { git = "https://github.com/hardglitch/log.git" } # online
+#log = { path = "../_SHARED_LIBS/log" } # offline
 
 [dev-dependencies]
 tempfile = "3"
