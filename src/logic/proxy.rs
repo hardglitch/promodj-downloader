@@ -4,7 +4,7 @@ use anyhow::anyhow;
 use std::fmt::{Display, Formatter};
 use std::net::{IpAddr, Ipv4Addr, SocketAddr};
 use std::sync::Arc;
-use log::log;
+use x_log::log;
 use strum::{Display, EnumIter};
 use tokio::sync::RwLock;
 

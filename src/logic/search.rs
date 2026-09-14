@@ -7,7 +7,7 @@ use scraper::{Html, Selector};
 use std::collections::{HashMap, HashSet};
 use std::sync::Arc;
 use std::time::Duration;
-use log::log;
+use x_log::log;
 use percent_encoding::percent_decode_str;
 use tokio::sync::mpsc::UnboundedSender;
 use tokio::sync::RwLock;

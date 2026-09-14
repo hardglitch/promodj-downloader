@@ -12,13 +12,13 @@ mod db_converter;
 
 use ui::MyApp;
 use eframe::{egui::ViewportBuilder, NativeOptions};
-use log::{log, Log};
+use x_log::{log, Log};
 use utils::main_helpers::{load_embedded_icon, load_db};
 use crate::data::consts::{BASE_HEIGHT, BASE_WIDTH};
 
 #[tokio::main]
 async fn main() {
-    Log::init("log.log", 10 * 1024 * 1024 * 1024);
+    let _guard = Log::init();
 
     let icon_bytes = include_bytes!("../assets/icon.ico");
     let icon_data =

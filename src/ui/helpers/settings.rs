@@ -2,7 +2,7 @@ use std::path::PathBuf;
 use std::str::FromStr;
 use std::time::UNIX_EPOCH;
 use configparser::ini::Ini;
-use log::log;
+use x_log::log;
 use crate::data::consts::{FORMS, GENRES};
 use crate::data::dictionary::Lang;
 use crate::ui::MyApp;

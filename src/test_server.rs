@@ -1,9 +1,10 @@
 use crate::data::consts::{LOSSLESS_COMPRESSED_FORMATS, LOSSLESS_UNCOMPRESSED_FORMATS, LOSSY_FORMATS};
 use std::path::Path;
-use log::{log, Log};
+use x_log::{log, Log};
 use tokio::io::{AsyncReadExt, AsyncWriteExt};
 use tokio::net::{TcpListener, TcpStream};
 use percent_encoding::{percent_decode, percent_encode, NON_ALPHANUMERIC};
+use x_log::backend::LogBackendBuilder;
 
 const SERVER_ADDR: &str = "127.0.0.1:80";
 const MUSIC_DIRECTORY: &str = r#"K:\_MUSIC\HOUSE"#;
@@ -188,13 +189,20 @@ async fn start_media_server() {
 #[ignore]
 #[tokio::test]
 async fn start_test_media_server() {
-    Log::init("server.log", 10 * 1024 * 1024 * 1024);
+    let backend = LogBackendBuilder::new()
+        .path("server.log")
+        .build();
+    let _guard = Log::init_with(backend);
     start_media_server().await;
 }
 
 #[test]
 fn encode_decode_test() {
-    Log::init("server.log", 10 * 1024 * 1024 * 1024);
+    let backend = LogBackendBuilder::new()
+        .path("server.log")
+        .build();
+    let _guard = Log::init_with(backend);
+
     let s = "Yorgy Simenon - I'm Staying [Mix 001] (promodj.com).flac";
     let encoded = percent_encode(s.as_bytes(), NON_ALPHANUMERIC).to_string();
     assert_eq!(r#"Yorgy%20Simenon%20%2D%20I%27m%20Staying%20%5BMix%20001%5D%20%28promodj%2Ecom%29%2Eflac"#, encoded);

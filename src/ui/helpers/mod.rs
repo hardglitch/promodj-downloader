@@ -11,7 +11,7 @@ use eframe::epaint::text::{FontData, FontDefinitions};
 use eframe::epaint::FontFamily;
 use eframe::CreationContext;
 use std::sync::Arc;
-use log::log;
+use x_log::log;
 use crate::utils::tools;
 
 impl MyApp {

@@ -3,7 +3,7 @@ pub mod dbcore;
 use crate::db::dbcore::{DBType, Database};
 use sqlx_core::pool::PoolConnection;
 use std::collections::HashMap;
-use log::log;
+use x_log::log;
 use sqlx_core::sql_str::AssertSqlSafe;
 
 impl Database {

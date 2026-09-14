@@ -2,6 +2,7 @@
 name = "promodj-downloader"
 version = "2.6.1"
 edition = "2024"
+authors = ["hardglitch"]
 build = "build.rs"
 
 [dependencies]
@@ -15,10 +16,10 @@ eframe = { version = "0.35", default-features = false, features = [
 egui = { version = "0.35", default-features = false }
 image = { version = "0.25", default-features = false, features = ["png", "ico"] }
 rfd = "0.15"
-configparser = "3.2"
+configparser = "3.3"
 strum = { version = "0.27", features = ["derive"] }
-regex = "1.12"
-tokio = { version =  "1.52", features = ["rt-multi-thread", "macros"] }
+regex = "1.13"
+tokio = { version =  "1.53", features = ["rt-multi-thread", "macros"] }
 sqlx = { version = "0.9", features = [ "runtime-tokio", "tls-rustls", "sqlite" ] }
 sqlx-core = "0.9"
 reqwest = { version = "0.13", features = [ "stream", "socks" ] }
@@ -29,8 +30,8 @@ percent-encoding = "2.3"
 aes-gcm = { version = "0.11", features = ["getrandom", "arrayvec", "rand_core"] }
 rand = "0.10"
 
-log = { git = "https://github.com/hardglitch/log.git" } # online
-#log = { path = "../_SHARED_LIBS/log" } # offline
+#x-log = { git = "https://github.com/hardglitch/x-log.git" } # online
+x-log = { path = "../_SHARED_LIBS/x-log" } # offline
 
 [dev-dependencies]
 tempfile = "3"

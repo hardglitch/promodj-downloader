@@ -1,7 +1,7 @@
 use eframe::emath::vec2;
 use egui::{CursorIcon, Image, RichText, Sense, Ui};
 use egui::load::SizedTexture;
-use log::log;
+use x_log::log;
 use crate::data::dictionary;
 use crate::data::dictionary::{hints, inscriptions};
 use crate::logic::Command;

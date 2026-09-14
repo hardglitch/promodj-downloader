@@ -1,14 +1,14 @@
 use regex::Regex;
 use std::sync::LazyLock;
 use std::time::UNIX_EPOCH;
-use log::log;
+use x_log::log;
 
 // Remove forbidden symbols
 static RE1: LazyLock<Regex> = LazyLock::new(|| {
     match Regex::new(r#"[!$%*?\/\\:\"<>|]"#) {
         Ok(r) => r,
         Err(e) => {
-            log!("RE1: {e}"); panic!("{e}");
+            log!("RE1: {e}"); std::panic::panic_any("{e}");
         }
     }
 });
@@ -17,7 +17,7 @@ static RE2: LazyLock<Regex> = LazyLock::new(|| {
     match Regex::new(r" {2,}") {
         Ok(r) => r,
         Err(e) => {
-            log!("RE2: {e}"); panic!("{e}");
+            log!("RE2: {e}"); std::panic::panic_any("{e}");
         }
     }
 });

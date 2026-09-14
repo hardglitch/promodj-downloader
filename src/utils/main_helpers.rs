@@ -1,6 +1,6 @@
 use std::sync::Arc;
 use egui::IconData;
-use log::log;
+use x_log::log;
 use crate::db::dbcore::{Database, DB_NAME};
 
 pub fn load_embedded_icon(bytes: &[u8]) -> Result<IconData, image::ImageError> {
