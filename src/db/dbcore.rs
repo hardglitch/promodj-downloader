@@ -1,4 +1,4 @@
-use x_log::{log, log_owned};
+use x_log::{log, log_eager};
 use sqlx_core::migrate::MigrateDatabase;
 use sqlx_core::pool::{Pool, PoolConnection};
 
@@ -19,12 +19,12 @@ impl Database {
                 if is && let Some(pool) = Self::pool(addr).await {
                     Some(Self { pool })
                 } else {
-                    log_owned!("Failed to open the '{addr}' database");
+                    log_eager!("Failed to open the '{addr}' database");
                     None
                 }
             },
             Err(e) => {
-                log_owned!("The Database '{}' doesn't exist: {}", addr.to_string(), e);
+                log_eager!("The Database '{}' doesn't exist: {}", addr.to_string(), e);
                 None
             },
         }
@@ -34,7 +34,7 @@ impl Database {
         if !DBType::database_exists(addr).await.unwrap_or(false) &&
            let Err(e) = DBType::create_database(addr).await
         {
-            log_owned!("Failed to create the '{}' database: {}", addr, e);
+            log_eager!("Failed to create the '{}' database: {}", addr, e);
             std::process::exit(1);
         }
         Self::open(addr).await
@@ -44,7 +44,7 @@ impl Database {
         match Pool::<DBType>::connect(addr).await {
             Ok(pool) => Some(pool),
             Err(e) => {
-                log_owned!("Could not establish connection with the '{}' database: {}", addr, e);
+                log_eager!("Could not establish connection with the '{}' database: {}", addr, e);
                 None
             }
         }
