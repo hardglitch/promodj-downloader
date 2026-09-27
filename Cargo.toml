@@ -6,14 +6,14 @@ authors = ["hardglitch"]
 build = "build.rs"
 
 [dependencies]
-eframe = { version = "0.35", default-features = false, features = [
+eframe = { version = "0.36", default-features = false, features = [
     "accesskit",
     "wayland",
     "web_screen_reader",
     "wgpu",
     "x11",
 ] }
-egui = { version = "0.35", default-features = false }
+egui = { version = "0.36", default-features = false }
 image = { version = "0.25", default-features = false, features = ["png", "ico"] }
 rfd = "0.15"
 configparser = "3.3"
@@ -30,8 +30,8 @@ percent-encoding = "2.3"
 aes-gcm = { version = "0.11", features = ["getrandom", "arrayvec", "rand_core"] }
 rand = "0.10"
 
-#x-log = { git = "https://github.com/hardglitch/x-log.git" } # online
-x-log = { path = "../_SHARED_LIBS/x-log" } # offline
+x-log = { git = "https://github.com/hardglitch/x-log.git" } # online
+#x-log = { path = "../_SHARED_LIBS/x-log" } # offline
 
 [dev-dependencies]
 tempfile = "3"
