@@ -1,6 +1,6 @@
 pub mod dbcore;
 
-use crate::db::dbcore::{DBType, Database};
+use dbcore::{DBType, Database};
 use sqlx_core::pool::PoolConnection;
 use std::collections::HashMap;
 use x_log::log;
@@ -53,8 +53,7 @@ impl Database {
             // 3. Construct the final SQL query
             let query = format!("SELECT link FROM file_history WHERE link IN ({placeholders})");
 
-            // 4. Execute the query using sqlx::query_as
-            // We select the 'link' column. If a link exists, it will be returned.
+            // 4. Execute the query
             let mut query = sqlx::query_scalar::<_, String>(AssertSqlSafe(query));
             for link in links.iter() {
                 query = query.bind(link.to_owned());

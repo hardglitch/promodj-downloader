@@ -78,7 +78,7 @@ impl Proxy {
         let host_p3 = last.next()?.parse::<u8>().ok()?;
         let host_p4 = last.next()?.parse::<u8>().ok()?;
 
-        let proxy_type = ProxyType::from(protocol).unwrap();
+        let proxy_type = ProxyType::from(protocol)?;
 
         let address = SocketAddr::new(IpAddr::V4(Ipv4Addr::new(host_p1, host_p2, host_p3, host_p4)), port);
 

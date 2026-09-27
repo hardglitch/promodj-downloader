@@ -15,7 +15,7 @@ pub async fn load_db() -> Arc<Database> {
     let (tx, mut rx) = tokio::sync::oneshot::channel::<Database>();
     if let Some(db) = Database::create_or_open(DB_NAME).await {
         db.create_tables().await;
-        if tx.send(db).is_err() { log!("Database: MPSC channel send failed"); }
+        if tx.send(db).is_err() { log!("Database: oneshot channel send failed"); }
     }
     if let Ok(db) = rx.try_recv() { Arc::new(db) }
     else {
